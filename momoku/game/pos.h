@@ -41,8 +41,6 @@ enum Dir : int16_t {
 
 constexpr int16_t D4[4] = { D_R, D_D, D_DR, D_UR };
 
-constexpr int16_t D8[8] = { D_R, D_D, D_DR, D_UR, D_L, D_U, D_UL, D_DL };
-
 [[maybe_unused]] constexpr int16_t EXPAND_S2L3[] = { //S2L3
 	D_U * 3 + D_L * 3,
 	D_U * 3,
@@ -135,7 +133,7 @@ constexpr int16_t D8[8] = { D_R, D_D, D_DR, D_UR, D_L, D_U, D_UL, D_DL };
 	D_D * 4 + D_R * 4,
 };
 
-constexpr int16_t EXPAND_L4[] = { //L4
+[[maybe_unused]] constexpr int16_t EXPAND_L4[] = { //L4
 	D_U * 4 + D_L * 4,
 	D_U * 4,
 	D_U * 4 + D_R * 4,

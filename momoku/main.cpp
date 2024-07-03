@@ -3,7 +3,7 @@
 
 /** main function for AI console application  */
 int main(){
-	if (0) {
+	if (1) {
 		Piskvork::pisqpipe();
 	}
 	else {
