@@ -21,8 +21,8 @@ namespace Eval {
 		uint8_t type;
 	};
 
-	Line2 decode1(uint64_t code);
-	Flower decode2(int l1, int l2, int l3, int l4);
+	Line2& decode1(uint64_t code);
+	Flower& decode2(int l1, int l2, int l3, int l4);
 	//int threatP1Eval(std::array<std::array<int, 2>, FTYPE_NUM>& cntT);
 
 	struct trie_node {

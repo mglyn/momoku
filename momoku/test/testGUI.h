@@ -115,7 +115,7 @@ class GUI {
 	static constexpr int start_x = (width - grid_size * (col - 1)) / 2;
 	static constexpr int start_y = -height * 0.03 + (height - grid_size * (row - 1)) / 2;
 
-	Board bd;
+	Board bd = Board(15);
 	bool PV = false;
 
 	button btnplay[5];

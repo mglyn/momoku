@@ -13,7 +13,7 @@
 constexpr int CAND_RANGE = 3;
 
 struct Range {
-	int x1 = 15, y1 = 15, x2 = -1, y2 = -1;
+	int x1 = MAX_GAME_LENGTH, y1 = MAX_GAME_LENGTH, x2 = -1, y2 = -1;
 
 	void update(Pos pos, int length) {
 		int x = pos.x(), y = pos.y();
@@ -45,17 +45,18 @@ struct Unit {
 };
 
 class Board {
-	int _length;
+	int game_length;
 	int _cntMove;
 	Piece _self;
 	uint64_t hash;
 
-	std::vector<BoardInfo> info;
+	std::unique_ptr<BoardInfo> _info;
+	BoardInfo* info;
 
-	uint64_t codeLR[BOARD_LENGTH];				// L->R 低位->高位
-	uint64_t codeUD[BOARD_LENGTH];				// U->D 
-	uint64_t codeMain[2 * BOARD_LENGTH - 1];	// x = y
-	uint64_t codeVice[2 * BOARD_LENGTH - 1];	// x = -y 
+	std::array<uint64_t, BOARD_LENGTH> codeLR;				// L->R 低位->高位
+	std::array<uint64_t, BOARD_LENGTH> codeUD;			// U->D 
+	std::array<uint64_t, 2 * BOARD_LENGTH - 1> codeMain;// x = y
+	std::array<uint64_t, 2 * BOARD_LENGTH - 1> codeVice;// x = -y 
 	void or2Bits(PieceCode p, Pos pos);
 	void xor2Bits(PieceCode p, Pos pos);
 	void and2Bits(PieceCode p, Pos pos);
@@ -63,16 +64,20 @@ class Board {
 	std::array<Piece, BOARD_SIZE> content;
 	std::array<uint8_t, BOARD_SIZE> _cand;
 	std::array<Unit, BOARD_SIZE> units;
-	std::vector<std::array<Unit, 8 * Eval::HALF_LINE_LEN>> evalCache;
+
+	std::unique_ptr<std::array<Unit, 8 * Eval::HALF_LINE_LEN>> _evalCache;
+	std::array<Unit, 8 * Eval::HALF_LINE_LEN>* evalCache;
 
 public:
-	Board() { reset(); }
+	Board(int len);
+
+	Board(const Board& bd);
 
 	bool notin(Pos pos) const {
 		int x = pos.x(), y = pos.y();
-		return x >= _length || y >= _length || x < 0 || y < 0;
+		return x >= game_length || y >= game_length || x < 0 || y < 0;
 	}
-	int length() const { return _length; }
+	int length() const { return game_length; }
 	int cntMove() const { return _cntMove; }
 
 	Piece operator[](Pos pos) const { return content[pos]; }

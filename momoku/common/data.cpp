@@ -151,10 +151,10 @@ namespace Eval {
 	Line2 codeToLineID2[NUMCODE];
 	Flower lineToFlower[NUMLINE4DIR];
 
-	Line2 decode1(uint64_t code) {
+	Line2& decode1(uint64_t code) {
 		return codeToLineID2[(code >> 2) & 0b1111111100000000 | code & 0b11111111];
 	}
-	Flower decode2(int l1, int l2, int l3, int l4) {
+	Flower& decode2(int l1, int l2, int l3, int l4) {
 		return lineToFlower[(l1 << 12) + (l2 << 8) + (l3 << 4) + l4];
 	}
 

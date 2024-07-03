@@ -14,7 +14,7 @@ enum PickerMod {
 
 struct Move {
 	Pos pos = NULLPOS;
-	float val = 0;
+	int val = 0;
 	Move() = default;
 	Move(Pos pos, int val) :pos(pos), val(val) {}
 	bool operator < (const Move& mv)const {
@@ -26,15 +26,18 @@ class MovePicker {
 	const Board& bd;
 	const MainHist& mainHist;
 
-	Pos ttMove;
-	Move refutations[3];
+	Pos ttMove, killer1, killer2, counterMove;
 	int stage;
-	Move moves[MAX_MOVE + 1];
+	std::unique_ptr<Move> moves;
 	Move* cur, *end;
 
-	void genThreatMove();
-	void genQuietMove();
-	void genPseudoVCFMove();
+	enum GenType {
+		G_threat,
+		G_quiet,
+		G_vcf
+	};
+
+	void genMove(GenType type);
 
 public:
 	MovePicker(PickerMod mod, const Board &bd, const MainHist& mainHist, Pos ttMove);

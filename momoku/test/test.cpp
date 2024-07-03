@@ -51,6 +51,7 @@ void PrintTest() {
 	testText += "store: " + std::to_string(testText[store] / 1000.f) + "k\n";
 
 	std::cout << testText << "\n";
+	testText.clear();
 }
 //std::cout << "up\n";
 //std::cout << " now:" << pos.first << " " << pos.second << "\n";
