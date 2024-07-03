@@ -460,14 +460,16 @@ namespace Search {
 		RootMove lastBestMove(NULLPOS, -VAL_INF, -VAL_INF);
 		
 		int bestVal = -VAL_INF;
-		std::vector<Move> moves = genRootMove(bd);
 
 		if (bd.cntMove() == 0) {  // beginning move
 			rootMoves.push_back(RootMove({ 7,7 }, 0, 0));
 			return;
 		}
+
+		std::vector<Pos> moves = genRootMove(bd);
+
 		if (bd.cntFT(T5, bd.self())) { // winning move
-			Pos pos = find_if(moves.begin(), moves.end(), [this](auto& a) {return bd.type(bd.self(), a.pos) == T5; })->pos;
+			Pos pos = *find_if(moves.begin(), moves.end(), [this](auto& pos) {return bd.type(bd.self(), pos) == T5; });
 			rootMoves.push_back(RootMove(pos, 0, 0));
 			return;
 		}
@@ -493,7 +495,7 @@ namespace Search {
 
 		//init rootMoves
 		for (auto& move : moves) {
-			rootMoves.emplace_back(move.pos, -VAL_INF, -VAL_INF);
+			rootMoves.emplace_back(move, -VAL_INF, -VAL_INF);
 		}
 		auto cmpRootMove = [](const RootMove& a, const RootMove& b) {
 			return a.val == b.val ? a.lastVal > b.lastVal : a.val > b.val;

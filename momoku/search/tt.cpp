@@ -6,7 +6,7 @@
 
 void HashEntry::store(uint64_t hash, bool pv, Pos best, int val, int dep, int step, HashType type) {
 	uint64_t key22 = hash & 0x3fffff;
-	testText[Test::store]++;
+	testData[Test::store]++;
 	if (key() != key22 || dep >= _dep || type == B_Exact) {
 		_PV = pv;
 		if (val >= WIN_CRITICAL) val += step;

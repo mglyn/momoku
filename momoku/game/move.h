@@ -26,10 +26,10 @@ class MovePicker {
 	const Board& bd;
 	const MainHist& mainHist;
 
-	Pos ttMove;
-	Move refutations[3];
+	Pos ttMove, killer1, killer2, counterMove;
 	int stage;
 	Move moves[MAX_MOVE + 1];
+	bool added[BOARD_SIZE] = {};
 	Move* cur, *end;
 
 	void genThreatMove();
@@ -45,6 +45,6 @@ public:
 	Pos nextMove(bool skipQuiets = false);
 };
 
-std::vector<Move> genRootMove(const Board& bd);
+std::vector<Pos> genRootMove(const Board& bd);
 
 #endif

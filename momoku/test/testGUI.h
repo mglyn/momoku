@@ -346,11 +346,11 @@ public:
 			}
 			else if (op == 1) {//AI落子
 				answer = Search::search(bd);
-				
+				PrintTest();
+
 				if (answer.size())
 					bd.update(answer[0]);
 
-				PrintTest();
 
 				msg.message = 0;
 			}

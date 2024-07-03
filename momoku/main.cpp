@@ -3,11 +3,12 @@
 
 /** main function for AI console application  */
 int main(){
-	if (1) {
+	if (0) {
 		Piskvork::pisqpipe();
 	}
 	else {
-		GUI gui;
-		gui.Run();
+		GUI* gui = new GUI;
+		gui->Run();
+		delete gui;
 	}
 }
