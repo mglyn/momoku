@@ -23,23 +23,21 @@ MovePicker::MovePicker(PickerMod mod, const Board& bd, const MainHist& mainHist,
 	bd(bd),
 	ttMove(ttMove),
 	mainHist(mainHist),
-	moves(new Move[bd.length() * bd.length()]),
-	cur(moves.get()),
-	end(cur)
-{
+	cur(moves), end(moves) {
 	stage = (mod == P_main ? M_main_tt : M_VCF_tt) + (ttMove == NULLPOS);
 }
 
 MovePicker::MovePicker(PickerMod mod, const Board& bd, const MainHist& mainHist, 
 	Pos ttMove, Pos killer1, Pos killer2, Pos counterMove) :
 	bd(bd),
-	ttMove(ttMove), killer1(killer1), killer2(killer2), counterMove(counterMove),
+	ttMove(ttMove),
 	mainHist(mainHist),
-	moves(new Move[bd.length() * bd.length()]),
-	cur(moves.get()),
-	end(cur)
+	cur(moves), end(moves)
 {
 	stage = (mod == P_main ? M_main_tt : M_VCF_tt) + (ttMove == NULLPOS);
+	refutations[0].pos = killer1;
+	refutations[1].pos = killer2;
+	refutations[2].pos = counterMove;
 }
 
 Pos MovePicker::nextMove(bool skipQuiets) {
@@ -52,16 +50,15 @@ Pos MovePicker::nextMove(bool skipQuiets) {
 		return ttMove;
 
 	case M_threat_init:
-
-		genMove(G_threat);
-
+		
+		genThreatMove();
 		stage++;
 		[[fallthrough]];
 
 	case M_threat:
 
 		// find best move and sort
-		if (cur < end) {
+		for (; cur < end;) {
 			std::swap(*std::max_element(cur, end), *cur);
 			return (*cur++).pos;
 		}
@@ -71,21 +68,21 @@ Pos MovePicker::nextMove(bool skipQuiets) {
 
 	case M_refutation_init:
 
-	{
-		auto ok = [&](Pos pos) { return bd[pos] == Empty && bd.type(P1, pos) == TNone && bd.type(P2, pos) == TNone && pos != ttMove; };
-
-		if (ok(killer1)) *end++ = Move(killer1, 0);
-		if (ok(killer2)) *end++ = Move(killer2, 0);
-		if (ok(counterMove)) *end++ = Move(counterMove, 0);
-	}
+		cur = refutations;
+		end = std::unique(refutations, refutations + 3, [](const Move& mv1, const Move& mv2) {return mv1.pos == mv2.pos; });
 
 		stage++; 
 		[[fallthrough]];
 
 	case M_refutation:
 
-		if (cur < end) 
-			return (*cur++).pos;
+		for (; cur < end; cur++) {
+			if ((*cur).pos == NULLPOS || bd[(*cur).pos] != Empty) continue;
+			if (bd.type(P1, (*cur).pos) == TNone && bd.type(P2, (*cur).pos) == TNone) //skip the move already tried 
+				return (*cur++).pos;
+		}
+
+		cur = moves, end = moves;
 
 		stage++;
 		[[fallthrough]];
@@ -95,7 +92,7 @@ Pos MovePicker::nextMove(bool skipQuiets) {
 		if (skipQuiets) 
 			return NULLPOS;
 		
-		genMove(G_quiet);
+		genQuietMove();
 
 		//insertion sort
 		for (Move* i = cur; i < end; i++) {
@@ -107,20 +104,28 @@ Pos MovePicker::nextMove(bool skipQuiets) {
 				
 			*j = tmp;
 		}
+				
 		
 		stage++;
 		[[fallthrough]];
 
 	case M_quiet:
 
-		if (cur < end) 
-			return (*cur++).pos;
-		
+		for (; cur < end; cur++) {
+			if ((*cur).pos != refutations[0].pos && 
+				(*cur).pos != refutations[1].pos && 
+				(*cur).pos != refutations[2].pos) //skip the move already tried 
+				return (*cur++).pos;
+		}
+
 		return NULLPOS;
+
+
+
 
 	case M_VCF_init:
 
-		genMove(G_vcf);
+		genPseudoVCFMove();
 		stage++;
 		[[fallthrough]];
 
@@ -140,79 +145,107 @@ Pos MovePicker::nextMove(bool skipQuiets) {
 	return 0;
 }
 
-void MovePicker::genMove(GenType type) {
+void MovePicker::genThreatMove() {
 	Piece self = bd.self(), oppo = ~self;
 
-	switch (type) {
-	case G_threat:
+	// move scoring rule
+	auto score = [this, self, oppo](Pos pos) {
 
-		for (int i = bd.candRange().x1; i <= bd.candRange().x2; i++) {
-			for (int j = bd.candRange().y1; j <= bd.candRange().y2; j++) {
+		//Evaluate value through the formed pattern
+		int ret = 2 * bd.value(self, pos) + bd.value(oppo, pos);
 
-				Pos pos(i, j);
+		//history huristic
+		//ret += mainHist[self][1];
 
-				if (bd[pos] != Empty || !bd.cand(pos)) continue;   
-				if (pos == ttMove) continue;                    //skip ttMove
+		return ret;
+		};
 
-				if ((bd.cntFT(TH4, oppo) && (bd.type(self, pos) >= T4 || bd.type(oppo, pos) >= T4)) ||   //when oppo has dual 4 attack
-					(bd.type(self, pos) >= TH3 || bd.type(oppo, pos) >= TH3)) {
+	for (int i = bd.candRange().x1; i <= bd.candRange().x2; i++) {
+		for (int j = bd.candRange().y1; j <= bd.candRange().y2; j++) {
 
-					int score = 2 * bd.value(self, pos) + bd.value(oppo, pos);
+			Pos pos(i, j);
 
-					*end++ = Move(pos, score);
-				}
+			if (bd[pos] != Empty || !bd.cand(pos) || pos == ttMove)continue;   //skip ttMove
+
+			if ((bd.cntFT(TH4, oppo) && (bd.type(self, pos) >= T4 || bd.type(oppo, pos) >= T4)) ||   //when oppo has dual 4 attack
+				(bd.type(self, pos) >= TH3 || bd.type(oppo, pos) >= TH3)) 
+				*end++ = Move(pos, score(pos)); 
+		}
+	}
+}
+
+void MovePicker::genQuietMove() {
+	Piece self = bd.self(), oppo = ~self;
+
+	// move scoring rule
+	auto score = [this, self, oppo](Pos pos) {
+
+		//Evaluate value through the formed pattern
+		int ret = bd.value(self, pos) + bd.value(oppo, pos);
+
+		//history huristic
+		ret += mainHist[self][pos];
+
+		return ret;
+		};
+
+	//int valMax = -VAL_INF, valMin = VAL_INF;
+
+	for (int i = bd.candRange().x1; i <= bd.candRange().x2; i++) {
+		for (int j = bd.candRange().y1; j <= bd.candRange().y2; j++) {
+
+			Pos pos(i, j);
+
+			if (bd[pos] != Empty || !bd.cand(pos) || pos == ttMove)continue;   //skip ttMove
+
+			if (bd.type(self, pos) == TNone && bd.type(oppo, pos) == TNone) {
+				int val = score(pos);
+				*end++ = Move(pos, val);
+				//valMax = std::max(valMax, val);
+				//valMin = std::min(valMin, val);
 			}
 		}
+	}
 
-		break;
-	
-	case G_quiet:
+	//float len = std::max(valMax - valMin, 1);
+	//for (Move* i = cur; i < end; i++) {                     
+	//	
+	//	float val = (float)((*i).val - valMin) / len;  //归一化
 
-		for (int i = bd.candRange().x1; i <= bd.candRange().x2; i++) {
-			for (int j = bd.candRange().y1; j <= bd.candRange().y2; j++) {
+	//	int idx = 1 << int(5 * val); // 桶id
 
-				Pos pos(i, j);
+	//	int emptyPos = 0;
+	//	while (bucket[emptyPos][idx] && emptyPos < 16)
+	//		emptyPos++;
+	//	bucket[emptyPos][idx] = (*i).pos;
+	//}
+}
 
-				if (bd[pos] != Empty || !bd.cand(pos))continue;   
-				if (pos == ttMove) continue;                    //skip ttMove
-				if (pos == killer1 || pos == killer2 || pos == counterMove) continue; //skip refutations
+void MovePicker::genPseudoVCFMove() {
+	Piece self = bd.self(), oppo = ~self;
 
-				if (bd.type(self, pos) == TNone && bd.type(oppo, pos) == TNone) {
+	// move scoring rule
+	auto score = [this, self, oppo](Pos pos) {
 
-					int score = bd.value(self, pos) + bd.value(oppo, pos);
+		//Evaluate value through the formed pattern
+		int ret = bd.value(self, pos) + bd.value(oppo, pos);
 
-					score += mainHist[self][pos];
+		//history huristic
+		//ret += mainHist[self][1];
 
-					*end++ = Move(pos, score);
-				}
-			}
-		}
+		return ret;
+		};
 
-		break;
+	Pos lastPos = bd.lastMove(1);
+	constexpr int len = arrLen(EXPAND_L4);
+	for (int i = 0; i < len; i++) {
 
-	case G_vcf:
+		Pos pos = lastPos + EXPAND_L4[i];
 
-		Pos lastPos = bd.lastMove(1);
+		if (bd[pos] != Empty || pos == ttMove)continue;   //skip ttMove
 
-		for (int i = 0; i < 8; i++) {
-			for (int j = 1; j <= 4; j++) {
-
-				Pos pos = lastPos + j * D8[i];
-
-				if (bd[pos] != Empty)continue;   //skip ttMove
-				if (bd[pos] == oppo)break;
-				if (pos == ttMove) continue;
-
-				if (bd.type(self, pos) >= T4) {
-
-					int score = 2 * bd.value(self, pos) + bd.value(oppo, pos);
-
-					*end++ = Move(pos, score);
-				}
-			}
-		}
-
-		break;
+		if (bd.type(self, pos) >= T4) 
+			*end++ = Move(pos, score(pos));
 	}
 }
 

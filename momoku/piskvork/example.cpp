@@ -7,7 +7,7 @@
 namespace Piskvork {
     const char* infotext = "name=\"Random\", author=\"Petr Lastovicka\", version=\"3.2\", country=\"Czech Republic\", www=\"https://plastovicka.github.io\"";
 
-    Board bd(15);
+    Board bd;
 
     void brain_init() {
         if (width > MAX_GAME_LENGTH || height > MAX_GAME_LENGTH) {

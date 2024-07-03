@@ -2,28 +2,6 @@
 #include "../search/tt.h"
 #include "../test/test.h"
 
-Board::Board(int len) :
-	game_length(len),
-	_info(new BoardInfo[game_length * game_length + 1]),
-	info(_info.get()),
-	_evalCache(new std::array<Unit, 8 * Eval::HALF_LINE_LEN>[game_length * game_length + 1]),
-	evalCache(_evalCache.get())
-{
-	reset();
-}
-
-Board::Board(const Board& bd) :
-	game_length(bd.length()),
-	_info(new BoardInfo[game_length * game_length + 1]),
-	info(_info.get()),
-	_evalCache(new std::array<Unit, 8 * Eval::HALF_LINE_LEN>[game_length * game_length + 1]),
-	evalCache(_evalCache.get())
-{
-	reset();
-	for (int i = bd.cntMove(); i >= 1; i--) 
-		update(bd.lastMove(i));
-}
-
 void Board::or2Bits(PieceCode k, Pos pos) {
 	int x = pos.abx(), y = pos.aby();
 	codeLR[x] |= k << 2 * y;
@@ -54,10 +32,13 @@ void Board::and2Bits(PieceCode k, Pos pos) {
 }
 
 void Board::reset(int len) {
-	game_length = len;
+	_length = len;
 	_cntMove = 0;
 	_self = P1;
 	hash = 0x5c20db8251649948ULL;
+
+	info.resize(_length * _length + 1);
+	evalCache.resize(_length * _length + 1);
 
 	for (Pos pos = 0; pos < BOARD_SIZE; pos = pos + 1) {
 		
@@ -87,7 +68,7 @@ void Board::update(Pos pos) {
 	assert(_cntMove - 1 >= 0);
 	nf = info[_cntMove - 1];
 	nf.lastMove = pos;
-	nf.range.update(pos, game_length);
+	nf.range.update(pos, _length);
 
 	or2Bits(static_cast<PieceCode>(_self + 1), pos);
 	content[pos] = _self;
@@ -118,8 +99,6 @@ void Board::update(Pos pos) {
 			Pos npos = pos + j * D4[i];
 			if (content[npos] != Empty)continue;
 
-			_cand[npos]++;
-
 			Unit& v = units[npos];
 			*ic++ = v;
 
@@ -128,19 +107,17 @@ void Board::update(Pos pos) {
 			nf.valueP1 += v.fValue[P2];
 			nf.cntT[v.fType[P2]][P2]--;
 
+			_cand[npos]++;
 			v.line2[i] = Eval::decode1(code[i]);
-
-			Eval::Flower& F1 = Eval::decode2(v.line2[0].lineP1, v.line2[1].lineP1, v.line2[2].lineP1, v.line2[3].lineP1);
+			Eval::Flower F1 = Eval::decode2(v.line2[0].lineP1, v.line2[1].lineP1, v.line2[2].lineP1, v.line2[3].lineP1);
+			Eval::Flower F2 = Eval::decode2(v.line2[0].lineP2, v.line2[1].lineP2, v.line2[2].lineP2, v.line2[3].lineP2);
 			v.fType[P1] = F1.type;
 			v.fValue[P1] = F1.value;
-
-			nf.valueP1 += v.fValue[P1];
-			nf.cntT[v.fType[P1]][P1]++;
-
-			Eval::Flower& F2 = Eval::decode2(v.line2[0].lineP2, v.line2[1].lineP2, v.line2[2].lineP2, v.line2[3].lineP2);
 			v.fType[P2] = F2.type;
 			v.fValue[P2] = F2.value;
 
+			nf.valueP1 += v.fValue[P1];
+			nf.cntT[v.fType[P1]][P1]++;
 			nf.valueP1 -= v.fValue[P2];
 			nf.cntT[v.fType[P2]][P2]++;
 
@@ -174,16 +151,15 @@ void Board::undo() {
 			Pos npos = pos + j * D4[i];
 			if (content[npos] != Empty)continue;
 
-			_cand[npos]--;
-
 			units[npos] = *ic++;
+			_cand[npos]--;
 		}
 	}
 }
 
 Pos Board::findPattern(Piece p, FType pat) {
-	for (int i = 0; i < game_length; i++) {
-		for (int j = 0; j < game_length; j++) {
+	for (int i = 0; i < _length; i++) {
+		for (int j = 0; j < _length; j++) {
 			if (content[Pos(i, j)] != Empty)continue;
 			if (type(p, Pos(i, j)) == pat)return Pos(i, j);
 		}
