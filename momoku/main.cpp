@@ -11,4 +11,3 @@ int main(){
 		gui.Run();
 	}
 }
-//i tried
