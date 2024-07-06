@@ -287,14 +287,14 @@ namespace Search {
 		}
 
 		//razoring
-		if (dep <= 4 && eval + 20 * dep * dep + 15 < alpha) {
+		if (dep <= 4 && eval + 21 * dep * dep + 35 < alpha) {
 			testData[razor + dep]++;
 			return VCFSearch(NonPV, ss, alpha, alpha + 1, 0);
 		}
 
 		//futility pruning
 		if (!ss->ttpv && !oppoTH4 && beta > -WIN_CRITICAL &&
-			eval - (14 * dep * dep + 50) > beta) {
+			eval - (15 * dep * dep + 80) > beta) {
 			testData[futility + dep]++;
 			return eval;
 		}
@@ -460,14 +460,14 @@ namespace Search {
 		RootMove lastBestMove(NULLPOS, -VAL_INF, -VAL_INF);
 		
 		int bestVal = -VAL_INF;
-		std::vector<Move> moves = genRootMove(bd);
+		std::vector<Pos> moves = genRootMove(bd);
 
 		if (bd.cntMove() == 0) {  // beginning move
 			rootMoves.push_back(RootMove({ 7,7 }, 0, 0));
 			return;
 		}
 		if (bd.cntFT(T5, bd.self())) { // winning move
-			Pos pos = find_if(moves.begin(), moves.end(), [this](auto& a) {return bd.type(bd.self(), a.pos) == T5; })->pos;
+			Pos pos = *find_if(moves.begin(), moves.end(), [this](Pos pos) {return bd.type(bd.self(), pos) == T5; });
 			rootMoves.push_back(RootMove(pos, 0, 0));
 			return;
 		}
@@ -481,20 +481,19 @@ namespace Search {
 		Stack stack[MAX_PLY + 10] = {};
 		Stack* ss = stack + 7;
 
-		for (int i = 7; i > 0; i--) {
+		for (int i = 7; i > 0; i--) 
 			(ss - i)->eval = -VAL_INF;
-		}
 
-		for (int i = 0; i < MAX_PLY + 2; i++) {
+		for (int i = 0; i < MAX_PLY + 2; i++) 
 			(ss + i)->ply = i;
-		}
+		
 
 		ss->pv = pv;
 
 		//init rootMoves
-		for (auto& move : moves) {
-			rootMoves.emplace_back(move.pos, -VAL_INF, -VAL_INF);
-		}
+		for (auto& move : moves) 
+			rootMoves.emplace_back(move, -VAL_INF, -VAL_INF);
+		
 		auto cmpRootMove = [](const RootMove& a, const RootMove& b) {
 			return a.val == b.val ? a.lastVal > b.lastVal : a.val > b.val;
 		};

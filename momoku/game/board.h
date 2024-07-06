@@ -77,6 +77,7 @@ public:
 
 	Piece operator[](Pos pos) const { return content[pos]; }
 	FType type(Piece p, Pos pos) const { return (FType)units[pos].fType[p]; }
+	FType type(Pos pos) const { return (FType)(std::max)(units[pos].fType[P1], units[pos].fType[P2]); }
 	int value(Piece p, Pos pos) const { return units[pos].fValue[p]; }
 	bool cand(Pos pos) const { return _cand[pos]; }
 
