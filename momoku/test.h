@@ -14,6 +14,7 @@ enum Test {
 	TDH3T4H3wincheck,
 	tothasherror,
 	store,
+	numThreats,
 	razor,
 	futility = 60,
 };

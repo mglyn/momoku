@@ -3,9 +3,7 @@
 
 #include <chrono>
 
-#include "../common/common.h"
-#include "../test/test.h"
-
+#include "common.h"
 
 namespace Search {
 	constexpr int MaxMsTime = 990;

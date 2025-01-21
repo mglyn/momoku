@@ -1,91 +1,46 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="game">
-      <UniqueIdentifier>{a1fbe867-ff85-4055-83e8-9e36fe46b823}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="common">
-      <UniqueIdentifier>{0f7e124f-2e41-4528-9d20-678e44cce69b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="search">
-      <UniqueIdentifier>{93024738-e214-445e-b9a8-22a1e4a00c39}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="piskvork">
-      <UniqueIdentifier>{ef214465-4959-4f9d-bb19-f28c7b30436e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="test">
-      <UniqueIdentifier>{e28e6c36-6835-4083-9bef-8871bdb346cb}</UniqueIdentifier>
-    </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="common\common.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="game\board.h">
-      <Filter>game</Filter>
-    </ClInclude>
-    <ClInclude Include="game\move.h">
-      <Filter>game</Filter>
-    </ClInclude>
-    <ClInclude Include="piskvork\pisqpipe.h">
-      <Filter>piskvork</Filter>
-    </ClInclude>
-    <ClInclude Include="search\search.h">
-      <Filter>search</Filter>
-    </ClInclude>
-    <ClInclude Include="search\tt.h">
-      <Filter>search</Filter>
-    </ClInclude>
-    <ClInclude Include="search\time.h">
-      <Filter>search</Filter>
-    </ClInclude>
-    <ClInclude Include="game\pos.h">
-      <Filter>game</Filter>
-    </ClInclude>
-    <ClInclude Include="test\testGUI.h">
-      <Filter>test</Filter>
-    </ClInclude>
-    <ClInclude Include="test\test.h">
-      <Filter>test</Filter>
-    </ClInclude>
-    <ClInclude Include="search\threads.h">
-      <Filter>search</Filter>
-    </ClInclude>
-    <ClInclude Include="common\misc.h">
-      <Filter>common</Filter>
-    </ClInclude>
-    <ClInclude Include="common\data.h">
-      <Filter>common</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="game\board.cpp">
-      <Filter>game</Filter>
-    </ClCompile>
-    <ClCompile Include="game\move.cpp">
-      <Filter>game</Filter>
-    </ClCompile>
-    <ClCompile Include="piskvork\example.cpp">
-      <Filter>piskvork</Filter>
-    </ClCompile>
-    <ClCompile Include="piskvork\pisqpipe.cpp">
-      <Filter>piskvork</Filter>
-    </ClCompile>
-    <ClCompile Include="search\search.cpp">
-      <Filter>search</Filter>
-    </ClCompile>
-    <ClCompile Include="search\tt.cpp">
-      <Filter>search</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="test\test.cpp">
-      <Filter>test</Filter>
+    <ClCompile Include="move.cpp" />
+    <ClCompile Include="search.cpp" />
+    <ClCompile Include="threads.cpp" />
+    <ClCompile Include="tt.cpp" />
+    <ClCompile Include="data.cpp" />
+    <ClCompile Include="eval.cpp" />
+    <ClCompile Include="interface\selfplay.cpp">
+      <Filter>interface</Filter>
     </ClCompile>
-    <ClCompile Include="search\threads.cpp">
-      <Filter>search</Filter>
-    </ClCompile>
-    <ClCompile Include="common\data.cpp">
-      <Filter>common</Filter>
-    </ClCompile>
+    <ClCompile Include="engine.cpp" />
+    <ClCompile Include="test.cpp" />
+    <ClCompile Include="position.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="eval.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="move.h" />
+    <ClInclude Include="search.h" />
+    <ClInclude Include="threads.h" />
+    <ClInclude Include="time.h" />
+    <ClInclude Include="tt.h" />
+    <ClInclude Include="common.h" />
+    <ClInclude Include="data.h" />
+    <ClInclude Include="eval.h" />
+    <ClInclude Include="misc.h" />
+    <ClInclude Include="interface\selfplay.h">
+      <Filter>interface</Filter>
+    </ClInclude>
+    <ClInclude Include="interface\testGUI.h">
+      <Filter>interface</Filter>
+    </ClInclude>
+    <ClInclude Include="engine.h" />
+    <ClInclude Include="test.h" />
+    <ClInclude Include="position.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="interface">
+      <UniqueIdentifier>{427ba70b-411b-4e39-bc6c-dc112fe484f3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

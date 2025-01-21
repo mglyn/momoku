@@ -1,10 +1,10 @@
 ﻿#include <random>
 #include <iostream>
 
-#include "../test/test.h"
+#include "test.h"
 #include "tt.h"
 
-void HashEntry::store(uint64_t hash, bool pv, Pos best, int val, int dep, int step, HashType type) {
+void HashEntry::store(uint64_t hash, bool pv, Sqare best, int val, int dep, int step, HashType type) {
 	uint64_t key22 = hash & 0x3fffff;
 	testData[Test::store]++;
 	if (key() != key22 || dep >= _dep || type == B_Exact) {
@@ -15,7 +15,7 @@ void HashEntry::store(uint64_t hash, bool pv, Pos best, int val, int dep, int st
 		_dep = dep;
 		_gen = tt.generation();
 		_type = type;
-		_movePos = best;
+		_moveSqare = best;
 		_hashLow16 = (uint16_t)key22;
 		_hashMid6 = (key22 >> 16);
 	}

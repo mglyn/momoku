@@ -1,9 +1,9 @@
 ﻿#ifndef TT
 #define TT
 
-#include "../common/common.h"
-#include "../common/misc.h"
-#include "../game/board.h"
+#include "common.h"
+#include "misc.h"
+#include "position.h"
 
 constexpr int TTBYTESIZE = 1024 * 1024 * 250;
 
@@ -11,7 +11,7 @@ class HashEntry {
 	uint16_t _hashLow16;
 	uint16_t _hashMid6 : 6;
 
-	uint16_t _movePos : 10;
+	uint16_t _moveSqare : 10;
 	int16_t _value;
 	int8_t _dep;
 	uint8_t _gen : 5;
@@ -20,7 +20,7 @@ class HashEntry {
 
 public:
 	HashEntry() { clear(); }
-	Pos movePos() const { return _movePos; }
+	Sqare movePos() const { return _moveSqare; }
 	bool isPV() const { return _PV; }
 	uint64_t key() const { return (uint64_t)_hashLow16 | ((uint64_t)_hashMid6 << 16); }
 	HashType type() const { return static_cast<HashType>(_type); }
@@ -34,7 +34,7 @@ public:
 	int depth() const { return _dep; }
 	void setGeneration(uint8_t gen) { _gen = gen; }
 	void clear() { memset(this, 0, sizeof(HashEntry)); }
-	void store(uint64_t hash, bool pv, Pos best, int score, int dep, int step, HashType type);
+	void store(uint64_t hash, bool pv, Sqare best, int score, int dep, int step, HashType type);
 };
 
 class HashTable {
