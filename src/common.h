@@ -1,13 +1,9 @@
 ﻿#ifndef COMMON
 #define COMMON
 
-#include <vector>
-#include <array>
-#include <cmath>
-#include <chrono>
-#include <iostream>
-
-using namespace std::chrono;
+#include <cassert>
+#include <cstdint>
+#include <algorithm>
 
 enum Piece :uint8_t {
 	P1 = 0,
@@ -28,21 +24,43 @@ constexpr Piece operator~(Piece p) { return static_cast<Piece>(p ^ 1); }
 constexpr int FTYPE_NUM = 8;
 enum FType :uint8_t {
 	TNone,
+	Forbid,
 	TH3,
 	TDH3,
 	T4,
 	T4H3,
 	TH4,
 	T5,
-	Forbid
 };
 
-enum HashType :uint8_t {
-	B_Initial = 0,
-	B_Upper = 1,
-	B_Lower = 2,
-	B_Exact = 3
+enum Bound {
+	BOUND_NONE,
+	BOUND_UPPER,
+	BOUND_LOWER,
+	BOUND_EXACT = BOUND_UPPER | BOUND_LOWER
 };
+
+enum : int {
+	// The following DEPTH_ constants are used for transposition table entries
+	// and quiescence search move generation stages. In regular search, the
+	// depth stored in the transposition table is literal: the search depth
+	// (effort) used to make the corresponding transposition table value. In
+	// quiescence search, however, the transposition table entries only store
+	// the current quiescence move generation stage (which should thus compare
+	// lower than any regular search depth).
+	DEPTH_QS = 0,
+	// For transposition table entries where no searching at all was done
+	// (whether regular or qsearch) we use DEPTH_UNSEARCHED, which should thus
+	// compare lower than any quiescence or regular depth. DEPTH_ENTRY_OFFSET
+	// is used only for the transposition table entry occupancy check (see tt.cpp),
+	// and should thus be lower than DEPTH_UNSEARCHED.
+	DEPTH_UNSEARCHED = -2,
+	DEPTH_ENTRY_OFFSET = -3
+};
+
+using Key = uint64_t;
+
+constexpr int MAX_PLY = 246;
 
 constexpr int BOARD_LENGTH = 32;
 constexpr int BOARD_SIZE = BOARD_LENGTH * BOARD_LENGTH;
@@ -52,38 +70,69 @@ constexpr int MAX_MOVE = MAX_GAME_LENGTH * MAX_GAME_LENGTH;
 
 constexpr int CAND_RANGE = 2;
 
-constexpr int WIN_CRITICAL = 20000;
-constexpr int WIN_MAX = 30000;
-constexpr int VAL_INF = 30001;
-constexpr int VAL_DRAW = 0;
-constexpr int VAL_ZERO = 0;
+using Depth = int;
+// Value is used as an alias for int, this is done to differentiate between a search
+// value and any other integer value. The values used in search are always supposed
+// to be in the range (-VALUE_NONE, VALUE_NONE] and should not exceed this range.
+using Value = int;
 
-constexpr int MAX_PLY = 128;
-constexpr int END_DEP = 127;
+constexpr Value VALUE_ZERO = 0;
+constexpr Value VALUE_DRAW = 0;
+constexpr Value VALUE_NONE = 32002;
+constexpr Value VALUE_INFINITE = 32001;
 
-struct Sqare {
+constexpr Value VALUE_MATE = 32000;
+constexpr Value VALUE_MATE_IN_MAX_PLY = VALUE_MATE - MAX_PLY;
+constexpr Value VALUE_MATED_IN_MAX_PLY = -VALUE_MATE_IN_MAX_PLY;
+
+constexpr bool is_valid(Value value) { return value != VALUE_NONE; }
+
+constexpr bool is_win(Value value) {
+	assert(is_valid(value));
+	return value >= VALUE_MATE_IN_MAX_PLY;
+}
+
+constexpr bool is_loss(Value value) {
+	assert(is_valid(value));
+	return value <= VALUE_MATED_IN_MAX_PLY;
+}
+
+constexpr bool is_decisive(Value value) { return is_win(value) || is_loss(value); }
+
+constexpr Value mate_in(int ply) { return VALUE_MATE - ply; }
+
+constexpr Value mated_in(int ply) { return -VALUE_MATE + ply; }
+
+struct Square {
 	int16_t _sq;
-	Sqare() { _sq = 0; }
-	Sqare(int x, int y) : _sq(((x + BOARD_BOUNDARY) << 5) | (y + BOARD_BOUNDARY)) {}
-	constexpr Sqare(int sq) : _sq(sq) {}
+	Square() { _sq = 0; }
+	Square(int x, int y) : _sq(((x + BOARD_BOUNDARY) << 5) | (y + BOARD_BOUNDARY)) {}
+	constexpr Square(int sq) : _sq(sq) {}
 	operator int() { return _sq; }
 	constexpr int x() const { return (_sq >> 5) - BOARD_BOUNDARY; }
 	constexpr int abx() const { return _sq >> 5; }
 	constexpr int y() const { return (_sq & 31) - BOARD_BOUNDARY; }
 	constexpr int aby() const { return _sq & 31; }
-	static int dis1(Sqare u, Sqare v) {
+	static int dis1(Square u, Square v) {
 		return (std::max)(std::abs(u.x() - v.x()), std::abs(u.y() - v.y()));
 	}
-	static int dis2(Sqare u, Sqare v) {
-		int dx = std::abs(u.x() - v.x()), dy = std::abs(u.y() - v.y());
-		if (dy == 0 || dx - dy == 0 || dx + dy == 0)return std::abs(dx);
-		else if (dx == 0)return abs(dy);
+	static int lineDistance(Square u, Square v) {
+
+		int dx = u.x() - v.x();
+		int dy = u.y() - v.y();
+
+		if (dx == 0)
+			return std::abs(dy);
+		else if (dy == 0 || dx - dy == 0 || dx + dy == 0)
+			return std::abs(dx);
+		else
+			return MAX_GAME_LENGTH;
 	}
-	bool operator ==(Sqare sq) const { return _sq == sq._sq; }
-	bool operator !=(Sqare sq) const { return _sq != sq._sq; }
+	bool operator ==(Square sq) const { return _sq == sq._sq; }
+	bool operator !=(Square sq) const { return _sq != sq._sq; }
 };
 
-constexpr Sqare NULLSQARE = 0;
+constexpr Square NULLSQUARE = 0;
 
 enum Dir : int16_t {
 	D_U = -BOARD_LENGTH,
