@@ -3,7 +3,7 @@
 #include "search.h"
 #include "time.h"
 #include "common.h"
-#include "gomocup.h"
+#include "engine.h"
 
 #include <algorithm>
 #include <cassert>

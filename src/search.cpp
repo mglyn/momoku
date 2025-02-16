@@ -4,7 +4,6 @@
 #include "search.h"
 #include "tt.h"
 #include "engine.h"
-#include "gomocup.h"
 
 static constexpr int checkMate(const Stack* ss, const Position& pos) {
 	Piece us = pos.side_to_move(), op = ~us;
@@ -57,9 +56,9 @@ Value value_from_tt(Value v, int ply) {
 }
 
 void updatePV(Square* pv, Square sq, Square* childPV) {
-	for (*pv++ = sq; childPV && *childPV != NULLSQUARE;)
+	for (*pv++ = sq; childPV && *childPV != Square::NONE;)
 		*pv++ = *childPV++;
-	*pv = NULLSQUARE;
+	*pv = Square::NONE;
 }
 
 Worker::Worker(SharedState& sharedState,
@@ -86,7 +85,7 @@ void Worker::start_searching() {
 	tt.new_search();
 
 	if (rootMoves.empty()) {
-		rootMoves.emplace_back(NULLSQUARE);
+		rootMoves.emplace_back(Square::NONE);
 		main_manager()->updates.onUpdateNoMoves({ 0, -VALUE_MATE });
 	}
 	else {
@@ -100,11 +99,10 @@ void Worker::start_searching() {
 
 	// Wait until all threads have finished
 	threads.wait_for_search_finished();
-	PrintTest();
 
 	Worker* bestThread = this;
 
-	if (int(options["MultiPV"]) == 1 && rootMoves[0].pv[0] != NULLSQUARE)
+	if (int(options["MultiPV"]) == 1 && rootMoves[0].pv[0] != Square::NONE)
 		bestThread = threads.get_best_thread()->worker.get();
 
 	main_manager()->bestPreviousScore = bestThread->rootMoves[0].score;
@@ -150,7 +148,7 @@ void Worker::iterative_deepening() {
 
 	int lastBestMoveDepth = 0;
 	int lastBestScore = -VALUE_INFINITE;
-	std::vector<Square> lastBestPV = std::vector{ NULLSQUARE };
+	std::vector<Square> lastBestPV = std::vector{ Square::NONE };
 
 	int  alpha, beta;
 	int  bestValue = -VALUE_INFINITE;
@@ -211,9 +209,9 @@ void Worker::iterative_deepening() {
 				int adjustedDepth = std::max(1, rootDepth - failedHighCnt / 4);
 				rootDelta = beta - alpha;
 
-				if (mainThread) {
-					sync_cout << alpha << " " << beta << sync_endl;
-				}
+				//if (mainThread) {
+				//	sync_cout << alpha << " " << beta << sync_endl;
+				//}
 				bestValue = search(Root, rootPos, ss, alpha, beta, adjustedDepth, false);
 				// Bring the best move to the front. It is critical that sorting
 				// is done with a stable algorithm because all the values but the
@@ -394,7 +392,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 			if (PvNode) {
 				(ss + 1)->pv = pv;
-				(ss + 1)->pv[0] = NULLSQUARE;
+				(ss + 1)->pv[0] = Square::NONE;
 
 				value = -search(PV, pos, ss + 1, -beta, -alpha, depth, false);
 			}
@@ -412,7 +410,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 	assert(0 <= ss->ply && ss->ply < MAX_PLY);
 
-	bestMove = NULLSQUARE;
+	bestMove = Square::NONE;
 
 	// Step 4. Transposition table lookup
 	posKey = pos.key();
@@ -420,7 +418,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	// Need further processing of the saved data
 	ttData.move = rootNode ? thisThread->rootMoves[thisThread->pvIdx].pv[0]
 		: ttHit ? ttData.move
-		: NULLSQUARE;
+		: Square::NONE;
 	ttData.value = ttHit ? value_from_tt(ttData.value, ss->ply) : VALUE_NONE;
 	ss->ttPv = PvNode || (ttHit && ttData.is_pv);
 
@@ -451,7 +449,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	else {
 		ss->staticEval = eval = staticEval(pos);
 		// Static evaluation is saved as it was before adjustment by correction history
-		ttWriter.write(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_UNSEARCHED, NULLSQUARE,
+		ttWriter.write(posKey, VALUE_NONE, ss->ttPv, BOUND_NONE, DEPTH_UNSEARCHED, Square::NONE,
 			eval, tt.generation());
 	}
 
@@ -495,7 +493,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 	// Step 12. Loop through all pseudo-legal moves until no moves remain
 	// or a beta cutoff occurs.
-	while ((move = mp.nextMove()) != NULLSQUARE) {
+	while ((move = mp.nextMove()) != Square::NONE) {
 
 		// At root obey the "searchmoves" option and skip moves not listed in Root Move List.
 		// In MultiPV mode we also skip PV moves that have been already searched.
@@ -519,8 +517,8 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		bool trivialMove = ss->moveFT[P1] == TNone && ss->moveFT[P2] == TNone;
 
 		extension = 0;
-		int disop = Square::dis1(st.move, move);
-		int disus = Square::dis1(pos.prevst().move, move);
+		int disop = Square::distance(st.move, move);
+		int disus = Square::distance(pos.prevst().move, move);
 		bool dispersed = disus > 4 && disop > 4;
 		bool improving = ss->staticEval - (ss - 2)->staticEval > 0;
 
@@ -557,7 +555,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		if (PvNode && (moveCount == 1 || value > alpha && (value < beta || rootNode))) {
 
 			(ss + 1)->pv = pv;
-			(ss + 1)->pv[0] = NULLSQUARE;
+			(ss + 1)->pv[0] = Square::NONE;
 
 			// Extend move from transposition table if we are about to dive into qsearch.
 			if (move == ttData.move && ss->ply <= thisThread->rootDepth * 2)
@@ -609,7 +607,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 				assert((ss + 1)->pv);
 
-				for (Square* m = (ss + 1)->pv; *m != NULLSQUARE; ++m)
+				for (Square* m = (ss + 1)->pv; *m != Square::NONE; ++m)
 					rm.pv.push_back(*m);
 
 				// We record how often the best move has been changed in each iteration.
@@ -693,14 +691,14 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	// Step 1. Initialize node
 	if (PvNode) {
 		(ss + 1)->pv = pv;
-		ss->pv[0] = NULLSQUARE;
+		ss->pv[0] = Square::NONE;
 	}
 
 	Worker* thisThread = this;
 	Piece us = pos.side_to_move(), op = ~us;
 	opT5 = st.cntT[T5][op];
 	opT = st.cntT[TH4][op] | st.cntT[T4H3][op] | st.cntT[TDH3][op];
-	bestMove = NULLSQUARE;
+	bestMove = Square::NONE;
 	moveCount = 0;
 
 	// Used to send selDepth info to GUI (selDepth counts from 1, ply from 0)
@@ -745,7 +743,7 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	posKey = pos.key();
 	auto [ttHit, ttData, ttWriter] = tt.probe(posKey);
 	// Need further processing of the saved data
-	ttData.move = ttHit ? ttData.move : NULLSQUARE;
+	ttData.move = ttHit ? ttData.move : Square::NONE;
 	ttData.value = ttHit ? value_from_tt(ttData.value, ss->ply) : VALUE_NONE;
 	pvHit = ttHit && ttData.is_pv;
 
@@ -774,7 +772,7 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	if (bestValue >= beta) {
 		if (!ttHit)
 			ttWriter.write(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER,
-				DEPTH_UNSEARCHED, NULLSQUARE, ss->staticEval, tt.generation());
+				DEPTH_UNSEARCHED, Square::NONE, ss->staticEval, tt.generation());
 		return bestValue;
 	}
 
@@ -782,7 +780,7 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 		alpha = bestValue;
 
 	MovePicker mp(P_VCF, pos, ttData.move);
-	while ((move = mp.nextMove()) != NULLSQUARE) {
+	while ((move = mp.nextMove()) != Square::NONE) {
 
 		moveCount++;
 
@@ -838,13 +836,13 @@ void SearchManager::check_time(Worker& worker) {
 
 	static TimePoint lastInfoTime = now();
 
-	TimePoint elapsed = tm.elapsed_time();
+	TimePoint elapsed = tm.elapsed_time() + 5;
 	TimePoint tick = worker.limits.startTime + elapsed;
 
-	if (tick - lastInfoTime >= 500) {
+	/*if (tick - lastInfoTime >= 500) {
 		lastInfoTime = tick;
-		//PrintTest();//////////////////////////////////////////////////////////////////////
-	}
+		PrintTest();
+	}*/
 
 	if (
 		// Later we rely on the fact that we can at least use the mainthread previous

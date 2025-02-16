@@ -29,10 +29,10 @@ struct StateInfo {
 	// Copied when making a move //////////////////
 	uint8_t cntT[FTYPE_NUM][2] = {};
 	int16_t valueP1 = 0;
-	Square T5Square;
 
 	// Not copied when making a move (will be recomputed anyhow)
-	Square move = NULLSQUARE;
+	Square move = Square::NONE;
+	Square T5Square;
 	Key key = 5211314;
 	Range range;
 };

@@ -54,8 +54,6 @@ public:
 	void wait_for_search_finished();
 
 	// modifiers
-	void resize_threads();
-	void set_tt_size(size_t mb);
 	void search_clear();
 
 	void set_on_update_no_moves(std::function<void(const InfoShort&)>&&);
@@ -66,7 +64,8 @@ public:
 	// utility functions
 	int get_hashfull(int maxAge = 0) const;
 
-	Options& get_options();
+	bool set_options(std::string option, size_t value);
+
 	const Options& get_options() const;
 
 	void consoleDBG(int gameSize, std::vector<Square> seq);

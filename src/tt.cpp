@@ -22,7 +22,7 @@ private:
 	uint16_t key16;
 	uint8_t  depth8;
 	uint8_t  genBound8;
-	Square   move16;
+	int16_t  move16;
 	int16_t  value16;
 	int16_t  eval16;
 public:
@@ -115,16 +115,16 @@ static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
 // Sets the size of the transposition table,
 // measured in megabytes. Transposition table consists
 // of clusters and each cluster consists of ClusterSize number of TTEntry.
-void TranspositionTable::resize(size_t mbSize) {
+void TranspositionTable::resize(size_t bSize) {
 
 	aligned_large_pages_free(table);
 
-	clusterCount = mbSize * 1024 * 1024 / sizeof(Cluster);
+	clusterCount = bSize / sizeof(Cluster);
 
 	table = static_cast<Cluster*>(aligned_large_pages_alloc(clusterCount * sizeof(Cluster)));
 
 	if (!table) {
-		std::cerr << "Failed to allocate " << mbSize << "MB for transposition table." << std::endl;
+		std::cerr << "Failed to allocate " << bSize << "Byte for transposition table." << std::endl;
 		exit(EXIT_FAILURE);
 	}
 
@@ -184,7 +184,7 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 			replace = &tte[i];
 
 	return { false,
-			TTData{NULLSQUARE, VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
+			TTData{Square::NONE, VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
 			TTWriter(replace) };
 }
 

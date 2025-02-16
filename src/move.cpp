@@ -29,12 +29,10 @@ MovePicker::MovePicker(PickerMod mod, const Position& pos,
 	ttMove(ttMove),
 	cur(moves), end(moves) {
 
-	if (mod == P_main) {
-		stage = M_main_tt + pos[ttMove] != Empty;
-	}
-	else if (mod == P_VCF) {
-		stage = M_VCF_tt + (pos[ttMove] != Empty || pos.type(pos.side_to_move(), ttMove) < T4);
-	}
+	stage = mod == P_main ? M_main_tt : M_VCF_tt;
+	bool ttValid = ttMove.is_ok() && pos[ttMove] == Empty && 
+		(mod == P_main || pos.type(pos.side_to_move(), ttMove) < T4);
+	stage += !ttValid;
 }
 
 Square MovePicker::nextMove() {
@@ -60,7 +58,7 @@ Square MovePicker::nextMove() {
 		if (cur < end)
 			return (*cur++).sq;
 
-		return NULLSQUARE;
+		return Square::NONE;
 
 	case M_VCF_init:
 
@@ -81,11 +79,11 @@ Square MovePicker::nextMove() {
 			return (*cur++).sq;
 		}
 
-		return NULLSQUARE;
+		return Square::NONE;
 	}
 
 	assert(0);
-	return NULLSQUARE;
+	return Square::NONE;
 }
 
 void MovePicker::genMove() {
@@ -119,23 +117,26 @@ void MovePicker::genMove() {
 
 void MovePicker::genPseudoVCFMove() {
 
-	Piece self = pos.side_to_move(), oppo = ~self;
+	Piece us = pos.side_to_move(), op = ~us;
 	const StateInfo& prevst = pos.prevst();
+	const StateInfo& st = pos.st();
 
 	Square lastMove = prevst.move;
-	[[unlikely]] if (lastMove == NULLSQUARE) 
+	[[unlikely]] if (lastMove == Square::NONE) 
 		return;
+
+	if (st.cntT[T4][us] + st.cntT[T4H3][us] + st.cntT[TH4][us] == 0) return;
 
 	constexpr int len = arrLen(EXPAND_L4);
 	for (int i = 0; i < len; i++) {
 
-		Square sq = lastMove + EXPAND_L4[i];
+		Square sq{ lastMove + EXPAND_L4[i] };
 
 		if (pos[sq] != Empty || sq == ttMove)continue;   //skip ttMove
 
-		if (pos.type(self, sq) >= T4) {
+		if (pos.type(us, sq) >= T4) {
 
-			int val = pos.value(self, sq) + pos.value(oppo, sq);
+			int val = pos.value(us, sq) + pos.value(op, sq);
 
 			*end++ = ExtMove(sq, val);
 		}

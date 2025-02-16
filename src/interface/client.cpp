@@ -2,6 +2,21 @@
 
 #include <sstream>
 
+enum WidgetType :int {
+	BlackStyle1,
+	WhiteStyle1,
+	BlackStyle2,
+	WhiteStyle2,
+	BlackStyle3,
+	WhiteStyle3,
+	SearchingMoveStyle1,
+	SearchingMoveStyle2,
+	EmptyCell,
+	Cursor,
+	ButtonStyle1,
+	ButtonStyle2,
+};
+
 void Button::showText(char text[], int dx, int dy, int size, int thick) {
 	LOGFONT f;
 	gettextstyle(&f);
@@ -80,11 +95,11 @@ void Button::show() {
 		showTextInMiddle(20, 300);
 	}
 	else if (type == SearchingMoveStyle1) {
-		Gdiplus::SolidBrush Pen_w(Gdiplus::Color(50, 148, 30));
-		graphics->FillEllipse(&Pen_w, Gdiplus::Rect{ x + w / 2 - 4, y + w / 2 - 4, 8, 8 });//绘制棋子内圈
+		Gdiplus::SolidBrush Pen_w(Gdiplus::Color(50, 100, 30));
+		graphics->FillEllipse(&Pen_w, Gdiplus::Rect{ x + w / 2 - 3, y + w / 2 - 3, 6, 6 });//绘制棋子内圈
 	}
 	else if (type == SearchingMoveStyle2) {
-		Gdiplus::SolidBrush Pen_w(Gdiplus::Color(50, 148, 30));
+		Gdiplus::SolidBrush Pen_w(Gdiplus::Color(100, 60, 50));
 		graphics->FillEllipse(&Pen_w, Gdiplus::Rect{ x + w / 2 - 7, y + w / 2 - 7, 14, 14 });//绘制棋子内圈
 	}
 	else if (type == EmptyCell) {
@@ -353,6 +368,7 @@ void Client::init_search_update_listeners() {
 			seq.push_back(bm);
 
 		searchingMove.clear();
+		PrintTest();
 		});
 }
 
@@ -375,7 +391,6 @@ void Client::Loop() {
 			int y = sqare / gameSize, x = sqare % gameSize;
 
 			bool valid = x < gameSize && y < gameSize && x >= 0 && y >= 0;
-
 			for (auto& i : seq) 
 				valid &= i.x() != x || i.y() != y;
 			if (valid) {

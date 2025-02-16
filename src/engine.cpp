@@ -15,22 +15,35 @@ Engine::Engine() {
 
 	options["timeout_turn"] = 1000;		//- time limit for each move(milliseconds, 0 = play as fast as possible)
 	options["timeout_match"] = 0;		//- time limit of a whole match(milliseconds, 0 = no limit)
-	options["max_memory"] = 512;		//- memory limit(bytes, 0 = no limit)
-	//options["time_left"] = 99999999;	//- remaining time limit of a whole match(milliseconds)
+	options["max_memory"] = 300ULL * 1024ULL * 1024ULL;		//- memory limit(bytes, 0 = no limit)
+	options["time_left"] = 0;			//- remaining time limit of a whole match(milliseconds)
 	options["game_type"] = 0;			//- 0 = opponent is human, 1 = opponent is brain, 2 = tournament, 3 = network tournament
-	options["rule"] = 0;					//- bitmask or sum of 1 = exactly five in a row win, 2 = continuous game, 4 = renju, 8 = caro
+	options["rule"] = 0;				//- bitmask or sum of 1 = exactly five in a row win, 2 = continuous game, 4 = renju, 8 = caro
 	//options["evaluate"]				//- coordinates X, Y representing current position of the mouse cursor
 	//options["folder"]					//- folder for persistent files
 	options["multipv"] = 1;
 
-	options["Threads"] = 8;
-	resize_threads();
+	options["Threads"] = 1;
 
-	tt.resize(options["max_memory"] - 20);
+	threads.set({ options, threads, tt }, updateContext);
+	tt.resize(options["max_memory"] - 16LL * 1048576LL);
 }
 
-Options& Engine::get_options() {
-	return options;
+bool Engine::set_options(std::string option, size_t value) {
+
+	if (options.count(option)) {
+		options[option] = value;
+
+		threads.wait_for_search_finished();
+
+		if (option == "Threads")
+			threads.set({ options, threads, tt }, updateContext);
+		if (option == "max_memory") {
+			tt.resize(std::max(options["max_memory"] - 16LL * 1048576LL, 128LL * 1048576LL));
+		}
+		return true;
+	}
+	else return false;
 }
 
 const Options& Engine::get_options() const {
@@ -80,16 +93,6 @@ void Engine::set_on_iter(std::function<void(const InfoIteration&)>&& f) {
 
 void Engine::set_on_bestmove(std::function<void(Square)>&& f) {
 	updateContext.onBestmove = std::move(f);
-}
-
-void Engine::resize_threads() {
-	threads.wait_for_search_finished();
-	threads.set({ options, threads, tt }, updateContext);
-}
-
-void Engine::set_tt_size(size_t b) {
-	wait_for_search_finished();
-	tt.resize(b);
 }
 
 int Engine::get_hashfull(int maxAge) const { return tt.hashfull(maxAge); }

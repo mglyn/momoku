@@ -10,7 +10,7 @@ enum PickerMod {
 };
 
 struct ExtMove {
-	Square sq = NULLSQUARE;
+	Square sq = Square::NONE;
 	int16_t val = 0;
 	ExtMove() = default;
 	ExtMove(Square sq, int val) :sq(sq), val(val) {}

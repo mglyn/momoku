@@ -14,21 +14,6 @@
 
 #include "../engine.h"
 
-enum WidgetType :int {
-	BlackStyle1,
-	WhiteStyle1,
-	BlackStyle2,
-	WhiteStyle2,
-	BlackStyle3,
-	WhiteStyle3,
-	SearchingMoveStyle1,
-	SearchingMoveStyle2,
-	EmptyCell,
-	Cursor,
-	ButtonStyle1,
-	ButtonStyle2,
-};
-
 class Button {
 	std::string text;
 	bool isin = false, isclick = false, active = true;

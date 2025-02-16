@@ -57,7 +57,7 @@ void Position::set(int gameSize) {
 
 	StateInfo& st = _st[_cntMove];
 
-	for (Square sq = 0; sq < BOARD_SIZE; sq = sq + 1) {
+	for (Square sq{ 0 }; sq < BOARD_SIZE; ++sq) {
 
 		if (notin(sq)) {
 			content[sq] = Invalid;
@@ -70,7 +70,7 @@ void Position::set(int gameSize) {
 
 		_cand[sq] = 0;
 	}
-	for (Square sq = 0; sq < BOARD_SIZE; sq = sq + 1) {
+	for (Square sq{ 0 }; sq < BOARD_SIZE; ++sq) {
 
 		if (!notin(sq)) {
 
@@ -181,7 +181,7 @@ void Position::make_move(Square sq) {
 
 			if (j == 0)continue;
 
-			Square npos = sq + j * D4[i];
+			Square npos{ sq + j * Direction4[i] };
 			if (content[npos] != Empty)continue;
 
 			Unit& v = units[npos];
@@ -229,7 +229,7 @@ void Position::undo() {
 
 			if (j == 0)continue;
 
-			Square npos = sq + j * D4[i];
+			Square npos{ sq + j * Direction4[i] };
 			if (content[npos] != Empty)continue;
 
 			units[npos] = *ic++;

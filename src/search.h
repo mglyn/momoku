@@ -56,11 +56,11 @@ struct RootMove {
 // LimitsType struct stores information sent by the caller about the analysis required.
 struct LimitsType {
 	std::vector<Square>		 searchmoves;
-	TimePoint                time[2], globalTime[2], movetime, startTime;
+	TimePoint                time[2], globalTime[2], startTime, movetime;
 
 	// Init explicitly due to broken value-initialization of non POD in MSVC
 	LimitsType() {
-		time[P1] = time[P2] = globalTime[P1] = globalTime[P2] = movetime = TimePoint(0);
+		time[P1] = time[P2] = movetime = TimePoint(0);
 	}
 
 	bool use_time_management() const { return time[P1] || time[P2]; }

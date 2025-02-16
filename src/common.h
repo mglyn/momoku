@@ -104,16 +104,19 @@ constexpr Value mate_in(int ply) { return VALUE_MATE - ply; }
 constexpr Value mated_in(int ply) { return -VALUE_MATE + ply; }
 
 struct Square {
-	int16_t _sq;
-	Square() { _sq = 0; }
+
+	int _sq;
+
+	Square() = default;
 	Square(int x, int y) : _sq(((x + BOARD_BOUNDARY) << 5) | (y + BOARD_BOUNDARY)) {}
-	constexpr Square(int sq) : _sq(sq) {}
-	operator int() { return _sq; }
+	constexpr explicit Square(int sq) : _sq(sq) {}
+	constexpr operator int() { return _sq; }
 	constexpr int x() const { return (_sq >> 5) - BOARD_BOUNDARY; }
 	constexpr int abx() const { return _sq >> 5; }
 	constexpr int y() const { return (_sq & 31) - BOARD_BOUNDARY; }
 	constexpr int aby() const { return _sq & 31; }
-	static int dis1(Square u, Square v) {
+	constexpr int is_ok() const { return _sq >= NONE._sq && _sq < BOARD_SIZE; }
+	static int distance(Square u, Square v) {
 		return (std::max)(std::abs(u.x() - v.x()), std::abs(u.y() - v.y()));
 	}
 	static int lineDistance(Square u, Square v) {
@@ -130,11 +133,20 @@ struct Square {
 	}
 	bool operator ==(Square sq) const { return _sq == sq._sq; }
 	bool operator !=(Square sq) const { return _sq != sq._sq; }
+
+	static const Square NONE;
 };
 
-constexpr Square NULLSQUARE = 0;
+constexpr Square& operator++(Square& p){
+	return p = Square(p + 1);
+}
+constexpr Square& operator--(Square& p){
+	return p = Square(p - 1);
+}
 
-enum Dir : int16_t {
+inline constexpr Square Square::NONE{ 0 };
+
+enum Direction : int {
 	D_U = -BOARD_LENGTH,
 	D_L = -1,
 	D_D = BOARD_LENGTH,
@@ -146,9 +158,9 @@ enum Dir : int16_t {
 	D_DR = D_D + D_R,
 };
 
-constexpr int16_t D4[4] = { D_R, D_D, D_DR, D_UR };
+constexpr int Direction4[4] = { D_R, D_D, D_DR, D_UR };
 
-[[maybe_unused]] constexpr int16_t EXPAND_S2L3[] = { //S2L3
+const int EXPAND_S2L3[] = { //S2L3
 	D_U * 3 + D_L * 3,
 	D_U * 3,
 	D_U * 3 + D_R * 3,
@@ -188,8 +200,7 @@ constexpr int16_t D4[4] = { D_R, D_D, D_DR, D_UR };
 	D_D * 3,
 	D_D * 3 + D_R * 3,
 };
-
-[[maybe_unused]] constexpr int16_t EXPAND_S2L4[] = { //S2L4
+const int EXPAND_S2L4[] = { //S2L4
 	D_U * 4 + D_L * 4,
 	D_U * 4,
 	D_U * 4 + D_R * 4,
@@ -239,8 +250,7 @@ constexpr int16_t D4[4] = { D_R, D_D, D_DR, D_UR };
 	D_D * 4,
 	D_D * 4 + D_R * 4,
 };
-
-[[maybe_unused]] constexpr int16_t EXPAND_L4[] = { //L4
+const int EXPAND_L4[] = { //L4
 	D_U * 4 + D_L * 4,
 	D_U * 4,
 	D_U * 4 + D_R * 4,
