@@ -5,6 +5,7 @@
 #include "position.h"
 #include "move.h"
 #include "time.h"
+#include "history.h"
 
 #include <map>
 #include <array>
@@ -56,11 +57,11 @@ struct RootMove {
 // LimitsType struct stores information sent by the caller about the analysis required.
 struct LimitsType {
 	std::vector<Square>		 searchmoves;
-	TimePoint                time[2], globalTime[2], startTime, movetime;
+	TimePoint                time[2], startTime, movetime;
 
 	// Init explicitly due to broken value-initialization of non POD in MSVC
 	LimitsType() {
-		time[P1] = time[P2] = movetime = TimePoint(0);
+		startTime = time[P1] = time[P2] = movetime = TimePoint(0);
 	}
 
 	bool use_time_management() const { return time[P1] || time[P2]; }
@@ -161,7 +162,7 @@ class Worker {
 	// This is the main search function, for both PV and non-PV nodes
 	Value search(NType, Position&, Stack*, Value, Value, Depth, bool cutNode);
 
-	// Quiescence search function, which is called by the main search
+	// This is the qsearch function, which is called by the main search
 	Value qsearch(NType, Position&, Stack*, Value, Value);
 
 	// Pointer to the search manager, only allowed to be called by the main thread
@@ -209,6 +210,9 @@ public:
 	void start_searching();
 
 	bool is_mainthread() const { return threadIdx == 0; }
+
+	MainHistory mainHistory;
+	CounterMoveHistory counterMoveHistory;
 };
 
 #endif

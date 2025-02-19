@@ -9,7 +9,8 @@ enum Piece :uint8_t {
 	P1 = 0,
 	P2 = 1,
 	Empty = 2,
-	Invalid = 3
+	Invalid = 3,
+	SIDE_NUM = 2
 };
 
 enum PieceCode :uint64_t {
@@ -21,7 +22,6 @@ enum PieceCode :uint64_t {
 
 constexpr Piece operator~(Piece p) { return static_cast<Piece>(p ^ 1); }
 
-constexpr int FTYPE_NUM = 8;
 enum FType :uint8_t {
 	TNone,
 	Forbid,
@@ -31,6 +31,7 @@ enum FType :uint8_t {
 	T4H3,
 	TH4,
 	T5,
+	FTYPE_NUM
 };
 
 enum Bound {
@@ -66,7 +67,7 @@ constexpr int BOARD_LENGTH = 32;
 constexpr int BOARD_SIZE = BOARD_LENGTH * BOARD_LENGTH;
 constexpr int BOARD_BOUNDARY = 5;
 constexpr int MAX_GAME_LENGTH = 20;
-constexpr int MAX_MOVE = MAX_GAME_LENGTH * MAX_GAME_LENGTH;
+constexpr int MAX_MOVE = MAX_GAME_LENGTH * MAX_GAME_LENGTH + 1;
 
 constexpr int CAND_RANGE = 2;
 
@@ -116,6 +117,7 @@ struct Square {
 	constexpr int y() const { return (_sq & 31) - BOARD_BOUNDARY; }
 	constexpr int aby() const { return _sq & 31; }
 	constexpr int is_ok() const { return _sq >= NONE._sq && _sq < BOARD_SIZE; }
+	constexpr int moveIndex() const { return y() * MAX_GAME_LENGTH + x(); }
 	static int distance(Square u, Square v) {
 		return (std::max)(std::abs(u.x() - v.x()), std::abs(u.y() - v.y()));
 	}

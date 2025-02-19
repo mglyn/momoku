@@ -11,6 +11,21 @@
 template<class T, int len>
 constexpr int arrLen(T(&x)[len]) { return len; }
 
+template<typename T, std::size_t MaxSize>
+class ValueList {
+
+public:
+    std::size_t size() const { return size_; }
+    void        push_back(const T& value) { values_[size_++] = value; }
+    const T* begin() const { return values_; }
+    const T* end() const { return values_ + size_; }
+    const T& operator[](int index) const { return values_[index]; }
+
+private:
+    T           values_[MaxSize];
+    std::size_t size_ = 0;
+};
+
 class PRNG {
     uint64_t s;
 
@@ -43,14 +58,6 @@ inline uint64_t mulhi64(uint64_t a, uint64_t b){
     uint64_t c2 = aH * bL + c1;
     uint64_t c3 = aL * bH + (uint32_t)c2;
     return aH * bH + (c2 >> 32) + (c3 >> 32);
-}
-
-inline void prefetch(void* addr) {
-#if defined(_MSC_VER)
-    _mm_prefetch((char*)addr, _MM_HINT_T0);
-#else
-    __builtin_prefetch(addr);
-#endif
 }
 
 enum SyncCout {
@@ -87,7 +94,9 @@ void aligned_large_pages_free(void* mem);
 
 
 enum Test {
-    exclude,
+    mainn,
+    qn,
+    vcfn,
     TTcutoff,
     betacutoff,
     vcfTTcutoff,

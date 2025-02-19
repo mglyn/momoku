@@ -41,6 +41,10 @@ static int staticEval(const Position& pos) {
 	return us == P1 ? evalP1 : -evalP1;
 }
 
+static constexpr int statBonus(Depth d) {
+	return std::min(25 * d * d + 105 * d - 130, 9000);
+}
+
 // Adjusts a mate from "plies to mate from the root" to
 // "plies to mate from the current position". Standard scores are unchanged.
 // The function is called before storing a value in the transposition table.
@@ -209,9 +213,9 @@ void Worker::iterative_deepening() {
 				int adjustedDepth = std::max(1, rootDepth - failedHighCnt / 4);
 				rootDelta = beta - alpha;
 
-				//if (mainThread) {
-				//	sync_cout << alpha << " " << beta << sync_endl;
-				//}
+				/*if (mainThread) {
+					sync_cout << alpha << " " << beta << sync_endl;
+				}*/
 				bestValue = search(Root, rootPos, ss, alpha, beta, adjustedDepth, false);
 				// Bring the best move to the front. It is critical that sorting
 				// is done with a stable algorithm because all the values but the
@@ -315,19 +319,32 @@ void Worker::iterative_deepening() {
 
 // Reset histories, usually before a new game
 void Worker::clear() {
-
+	for (auto& i : mainHistory) {
+		for (auto& j : i) {
+			for (auto& k : j) {
+				k = 0;
+			}
+		}
+	}
+	for (auto& i : counterMoveHistory) {
+		for (auto& j : i) {
+			j = { Square::NONE, TNone };
+		}
+	}
 }
 
 //template............
 int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
-
+	
  	bool PvNode = NT != NonPV;
 	bool rootNode = NT == Root;
 
-	//深度小于零搜索VCF
+	//深度小于零qsearch
 	if (depth <= 0) {
 		return qsearch(NT, pos, ss, alpha, beta);
 	}
+
+	testData[mainn]++;
 
 	assert(-VALUE_INFINITE <= alpha && alpha < beta && beta <= VALUE_INFINITE);
 	assert(PvNode || (alpha == beta - 1));
@@ -341,14 +358,17 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	Square move, bestMove;// excludedMove;
 	Depth extension, newDepth;
 	Value bestValue, value, eval; //maxValue, probCutBeta;
-	bool opT5, opT;
+	int opT5, opT;
 
 	// Step 1. Initialize node
 	Worker* thisThread = this;
 	Piece us = pos.side_to_move(), op = ~us;
 	opT5 = st.cntT[T5][op];
-	opT = st.cntT[TH4][op] | st.cntT[T4H3][op] | st.cntT[TDH3][op];
+	opT = opT5 + st.cntT[TH4][op];
 	bestValue = -VALUE_INFINITE;
+
+	ValueList<Square, 32> threatsSearched;
+	ValueList<Square, 32> quietsSearched;
 
 	// Check for the available remaining time
 	if (is_mainthread())
@@ -383,29 +403,6 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		if (alpha >= beta) {
 			return alpha;
 		}
-
-		//T5跳过节点 tobe further optimized
-		if (opT5) {
-			move = st.T5Square;
-
-			pos.make_move(move);
-
-			if (PvNode) {
-				(ss + 1)->pv = pv;
-				(ss + 1)->pv[0] = Square::NONE;
-
-				value = -search(PV, pos, ss + 1, -beta, -alpha, depth, false);
-			}
-			else 
-				value = -search(NonPV, pos, ss + 1, -beta, -alpha, depth, !cutNode);
-
-			pos.undo();
-
-			if (PvNode && !rootNode)
-				updatePV(ss->pv, move, (ss + 1)->pv);
-
-			return value;
-		}
 	}
 
 	assert(0 <= ss->ply && ss->ply < MAX_PLY);
@@ -429,14 +426,32 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	if (!PvNode && ttData.depth > depth - (ttData.value <= beta)
 		&& is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
 		&& (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
-		&& (cutNode == (ttData.value >= beta) || depth > 9)) 
-		return ttData.value;
+		&& (cutNode == (ttData.value >= beta) || depth > 9)) {
 	
+		// Update move heruistics for ttMove
+		// Validate ttMove first
+		if (ttData.move.is_ok() && pos[ttData.move] == Empty &&
+			!opT && pos.type(us, ttData.move) < TH3) {
+
+			int bonus = statBonus(depth);
+
+			// Bonus for a quiet ttMove that fails high
+			if (ttData.value >= beta)
+				mainHistory[us][ttData.move][HIST_QUIET] << bonus;
+			// Penalty for a quiet ttMove that fails low
+			else
+				mainHistory[us][ttData.move][HIST_QUIET] << -bonus;
+		}
+
+		return ttData.value;
+	}
 
 	// Step 5. Static evaluation of the position
 	if (opT) {
 		// Skip early pruning when in check
 		ss->staticEval = eval = -(ss - 1)->staticEval;
+		if (opT5)
+			goto moves_loop;
 	}
 	else if (ttHit) {
 		// Never assume anything about values stored in TT
@@ -485,7 +500,8 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	}
 
 
-	MovePicker mp(P_main, pos, ttData.move);
+moves_loop:
+	MovePicker mp(P_main, pos, &mainHistory, &counterMoveHistory, ttData.move);
 
 	value = bestValue;
 
@@ -514,7 +530,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		ss->moveFT[P1] = pos.type(P1, move);
 		ss->moveFT[P2] = pos.type(P2, move);
 
-		bool trivialMove = ss->moveFT[P1] == TNone && ss->moveFT[P2] == TNone;
+		bool trivialMove = pos.type(P1, move) == TNone && pos.type(P2, move) == TNone;
 
 		extension = 0;
 		int disop = Square::distance(st.move, move);
@@ -526,7 +542,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		if (!rootNode && !is_loss(bestValue)) {
 			
 			// Prun distract defence move which is likely to delay a winning
-			if (dispersed && opT && ss->moveFT[op] < T4 && depth <= 4) {
+			if (dispersed && opT && pos.type(op, move) < T4 && depth <= 4) {
 				testData[dispersedT]++;
 				continue;
 			}
@@ -535,18 +551,15 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 			if (trivialMove && depth <= 4) break;
 
 			// Move count pruning: skip move if movecount is above threshold
-			if (moveCount > (1.6 * depth + 3) / (2 - improving)) break;
+			if (moveCount > (1.6f * depth + 3) / (2 - improving)) break;
 		}
 
-		newDepth = depth - (st.cntT[TH4][op] ? 1 : 2);
+		newDepth = depth - (opT5 ? 0 : (opT ? 1 : 2));
 
 		// Step 15. Make the move
 		pos.make_move(move);
 		thisThread->nodes.fetch_add(1, std::memory_order_relaxed);
 		uint64_t nodeCount = rootNode ? uint64_t(nodes) : 0;
-
-		//if (ss->moveFT[us] != T4)
-			//tt.prefetch(newSt.key);
 
 		if (!PvNode || moveCount > 1) {
 			value = -search(NonPV, pos, ss + 1, -alpha - 1, -alpha, newDepth, true);
@@ -644,6 +657,15 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 				}
 			}
 		}
+
+		// If the move is worse than some previously searched move,
+	    // remember it, to update its stats later.
+		if (move != bestMove && moveCount <= 32) {
+			if (ss->moveFT[us] >= TH3)
+				threatsSearched.push_back(move);
+			else if(!opT)
+				quietsSearched.push_back(move);
+		}
 	}
 
 	// Step 20. Check for mate
@@ -653,8 +675,35 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	if (!moveCount)
 		bestValue = mated_in(ss->ply);
 
+	// If there is a move that produces search value greater than alpha,
+	// we update the stats of searched moves.
+	else if (bestMove) {
+
+		int bonus = statBonus(depth);
+
+		if (pos.type(us, bestMove) >= TH3) {
+
+			mainHistory[us][bestMove][HIST_THREAT] << bonus;
+		}
+		else if (!opT) {
+
+			mainHistory[us][bestMove][HIST_QUIET] << bonus;
+			// Decrease stats for all the other played non-best quiet moves
+			for (Square sq : quietsSearched)
+				mainHistory[us][sq][HIST_QUIET] << -bonus;
+		}
+
+		// Decrease stats for all the other played non-best attack moves
+		for (Square sq : threatsSearched)
+			mainHistory[us][sq][HIST_THREAT] << -bonus;
+
+		// Update counter move history 
+		if(Square lastMove = pos.prevst().move; lastMove)
+			counterMoveHistory[op][lastMove.moveIndex()] = std::make_pair(bestMove, pos.type(us, bestMove));
+	}
+
 	// If no good move is found and the previous position was ttPv, then the previous
-   // opponent move is probably good and the new position is added to the search tree. (~7 Elo)
+    // opponent move is probably good and the new position is added to the search tree. (~7 Elo)
 	if (bestValue <= alpha)
 		ss->ttPv = ss->ttPv || ((ss - 1)->ttPv && depth > 3);
 
@@ -673,6 +722,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 }
 
 int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta) {
+	testData[qn]++;
 
 	bool PvNode = NT != NonPV;
 
@@ -685,8 +735,9 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	Key   posKey;
 	Square move, bestMove;// excludedMove;
 	Value bestValue, value; //maxValue, probCutBeta;
-	bool pvHit, opT5, opT;
+	bool pvHit;
 	int moveCount;
+	int opT5;
 
 	// Step 1. Initialize node
 	if (PvNode) {
@@ -697,7 +748,7 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	Worker* thisThread = this;
 	Piece us = pos.side_to_move(), op = ~us;
 	opT5 = st.cntT[T5][op];
-	opT = st.cntT[TH4][op] | st.cntT[T4H3][op] | st.cntT[TDH3][op];
+	bestValue = -VALUE_INFINITE;
 	bestMove = Square::NONE;
 	moveCount = 0;
 
@@ -706,38 +757,22 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 		thisThread->selDepth = ss->ply + 1;
 
 	//检查赢/输棋
-	if (value = checkMate(ss, pos)) 
+	if (value = checkMate(ss, pos))
 		return value;
-	
+
 	//检查平局
-	if (pos.full()) 
+	if (pos.full())
 		return VALUE_DRAW;
 
 	//max ply
-	if (ss->ply >= MAX_PLY) 
+	if (ss->ply >= MAX_PLY)
 		return staticEval(pos);
-	
+
 	//mate distance pruning
 	alpha = std::max(mated_in(ss->ply), alpha);
 	beta = std::min(mate_in(ss->ply + 1), beta);
-	if (alpha >= beta) 
+	if (alpha >= beta)
 		return alpha;
-	
-	//T5跳过节点
-	if (opT5) {
-
-		move = st.T5Square;
-		pos.make_move(move);
-		
-		value = -qsearch(NT, pos, ss + 1, -beta, -alpha);
-		
-		pos.undo();
-
-		if (PvNode) 
-			updatePV(ss->pv, move, (ss + 1)->pv);
-
-		return value;
-	}
 
 	// Step 3. Transposition table lookup
 	posKey = pos.key();
@@ -750,39 +785,53 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 	// At non-PV nodes we check for an early TT cutoff
 	if (!PvNode && ttData.depth >= DEPTH_QS
 		&& is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
-		&& (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))) 
+		&& (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))) {
+		testData[vcfTTcutoff]++;
 		return ttData.value;
-
+	}
 
 	// Step 4. Static evaluation of the position
-	if (ttHit) {
-		// Never assume anything about values stored in TT
-		ss->staticEval = bestValue = is_valid(ttData.eval) ? ttData.eval : staticEval(pos);
 
-		// ttValue can be used as a better position evaluation (~7 Elo)
-		if (is_valid(ttData.value)
-			&& (ttData.bound & (ttData.value > bestValue ? BOUND_LOWER : BOUND_UPPER)))
-			bestValue = ttData.value;
+	if (opT5) {
+		bestValue = -VALUE_INFINITE;
 	}
 	else {
-		ss->staticEval = bestValue = staticEval(pos);
+		if (ttHit) {
+			// Never assume anything about values stored in TT
+			ss->staticEval = bestValue = is_valid(ttData.eval) ? ttData.eval : staticEval(pos);
+
+			// ttValue can be used as a better position evaluation (~7 Elo)
+			if (is_valid(ttData.value)
+				&& (ttData.bound & (ttData.value > bestValue ? BOUND_LOWER : BOUND_UPPER)))
+				bestValue = ttData.value;
+		}
+		else {
+			ss->staticEval = bestValue = staticEval(pos);
+		}
+
+		// Stand pat. Return immediately if static value is at least beta
+		if (bestValue >= beta) {
+			if (!ttHit)
+				ttWriter.write(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER,
+					DEPTH_UNSEARCHED, Square::NONE, ss->staticEval, tt.generation());
+			return bestValue;
+		}
+
+		if (bestValue > alpha)
+			alpha = bestValue;
 	}
 
-	// Stand pat. Return immediately if static value is at least beta
-	if (bestValue >= beta) {
-		if (!ttHit)
-			ttWriter.write(posKey, value_to_tt(bestValue, ss->ply), false, BOUND_LOWER,
-				DEPTH_UNSEARCHED, Square::NONE, ss->staticEval, tt.generation());
-		return bestValue;
-	}
-
-	if (bestValue > alpha)
-		alpha = bestValue;
-
-	MovePicker mp(P_VCF, pos, ttData.move);
+	MovePicker mp(P_VCF, pos, &mainHistory, nullptr, ttData.move);
 	while ((move = mp.nextMove()) != Square::NONE) {
 
 		moveCount++;
+
+		// Futility pruning and moveCount pruning
+		if (!is_loss(bestValue) && pos.type(us, move) < T4) {
+
+			if (moveCount > 3)
+				continue;
+		}
 
 		pos.make_move(move);
 		thisThread->nodes.fetch_add(1, std::memory_order_relaxed);

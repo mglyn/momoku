@@ -16,7 +16,7 @@ struct Range {
 
 struct Unit {
 	Eval::Line line[4] = {};
-	Eval::CombPattern cp[2] = {};
+	Eval::CombPattern cp[SIDE_NUM] = {};
 
 	inline void updateCombPattern() {
 		cp[P1] = Eval::decodeComb(line[0].lineP1, line[1].lineP1, line[2].lineP1, line[3].lineP1);
@@ -27,7 +27,7 @@ struct Unit {
 struct StateInfo {
 
 	// Copied when making a move //////////////////
-	uint8_t cntT[FTYPE_NUM][2] = {};
+	uint8_t cntT[FTYPE_NUM][SIDE_NUM] = {};
 	int16_t valueP1 = 0;
 
 	// Not copied when making a move (will be recomputed anyhow)

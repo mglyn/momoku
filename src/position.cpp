@@ -1,7 +1,7 @@
 ﻿#include "position.h"
 #include "misc.h"
 
-uint64_t Zobrist[2][BOARD_LENGTH * BOARD_LENGTH];
+uint64_t Zobrist[SIDE_NUM][BOARD_LENGTH * BOARD_LENGTH];
 
 bool init = []()->bool {
 	PRNG rng(1070372);

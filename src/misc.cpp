@@ -227,8 +227,12 @@ void PrintTest() {
     std::string testText;
 
     testText += "--------- TEST INFO ---------\n";
-    testText += "excllude: " + std::to_string(testData[exclude] / 1000.f) + "\n";
-    testData[exclude] = 0;
+    testText += "main node:" + std::to_string(testData[mainn] / 1000.f) + "\n";
+    testData[mainn] = 0;
+    testText += "q node:" + std::to_string(testData[qn] / 1000.f) + "\n";
+    testData[qn] = 0;
+    testText += "vcf node:" + std::to_string(testData[vcfn] / 1000.f) + "\n";
+    testData[vcfn] = 0;
     testText += "TT cutoff: " + std::to_string(testData[TTcutoff] / 1000.f) + "\n";
     testData[TTcutoff] = 0;
     testText += "beta cutoff: " + std::to_string(testData[betacutoff] / 1000.f) + "\n";

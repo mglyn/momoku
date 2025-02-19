@@ -13,7 +13,7 @@ int64_t& Options::operator[](const std::string& name) {
 
 Engine::Engine() {
 
-	options["timeout_turn"] = 1000;		//- time limit for each move(milliseconds, 0 = play as fast as possible)
+	options["timeout_turn"] = 1100;		//- time limit for each move(milliseconds, 0 = play as fast as possible)
 	options["timeout_match"] = 0;		//- time limit of a whole match(milliseconds, 0 = no limit)
 	options["max_memory"] = 300ULL * 1024ULL * 1024ULL;		//- memory limit(bytes, 0 = no limit)
 	options["time_left"] = 0;			//- remaining time limit of a whole match(milliseconds)
@@ -61,7 +61,7 @@ void Engine::go(int gameSize, std::vector<Square> seq) {
 	}
 
 	LimitsType limits;
-	limits.globalTime[P1] = limits.globalTime[P2] = options["timeout_match"];
+	limits.time[P1] = limits.time[P2] = options["timeout_match"];
 	limits.movetime = options["timeout_turn"];
 	limits.startTime = now();
 
