@@ -58,21 +58,25 @@ Square MovePicker::nextMove() {
 		auto cmp = [](const ExtMove& a, const ExtMove& b) {
 			return a.val < b.val;
 			};
-		insertionSort(cur, end, cmp);
+		//insertionSort(cur, end, cmp);
 
 		stage++;
 		[[fallthrough]];
 
 	case M_main:
 
-		if (cur < end)
+		if (cur < end) {
+			std::swap(*std::max_element(cur, end, cmp), *cur);
 			return (*cur++).sq;
+		}
+		/*if (cur < end)
+			return (*cur++).sq;*/
 
 		return Square::NONE;
 
 	case M_VCF_init:
 
-		genQsearchMove();
+		genVCFMove();
 
 		stage++;
 		[[fallthrough]];
@@ -98,36 +102,62 @@ void MovePicker::genMove() {
 	const StateInfo& st = pos.st();
 
 	[[unlikely]] if (pos.cntMove() == 0) { //first move
-		Square sq(pos.gameSize() / 2, pos.gameSize() / 2);
-		if (sq != ttMove)
+		if (Square sq(pos.gameSize() / 2, pos.gameSize() / 2); sq != ttMove)
 			*end++ = ExtMove(sq);
-		return;
 	}
 
-	if (st.cntT[T5][op]) {
-		if (st.T5Square != ttMove)
+	else if (st.cntT[T5][us]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.type(us, sq) == T5 && pos[sq] == Empty && sq != ttMove)
+					*end++ = ExtMove(sq);
+			}
+		}
+	}
+
+	else if (st.cntT[T5][op]) {
+		if (pos.type(op, st.T5Square) == T5 && pos[st.T5Square] == Empty && st.T5Square != ttMove)
 			*end++ = ExtMove(st.T5Square);
-		return;
+		else {
+			for (int i = st.range.x1; i <= st.range.x2; i++) {
+				for (int j = st.range.y1; j <= st.range.y2; j++) {
+					if (Square sq(i, j); pos.type(op, sq) == T5 && pos[sq] == Empty && st.T5Square != ttMove) {
+						*end++ = ExtMove(st.T5Square);
+					}
+				}
+			}
+		}
 	}
 
-	for (int i = st.range.x1; i <= st.range.x2; i++) {
-		for (int j = st.range.y1; j <= st.range.y2; j++) {
+	else if (st.cntT[TH4][us]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.type(us, sq) == TH4 && pos[sq] == Empty && sq != ttMove)
+					*end++ = ExtMove(sq);
+			}
+		}
+	}
 
-			Square sq(i, j);
+	else if (st.cntT[TH4][op]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); (pos.type(us, sq) >= T4 || pos.type(op, sq) >= T4) && pos[sq] == Empty && sq != ttMove)
+					*end++ = ExtMove(sq, pos.value(us, sq) + pos.value(op, sq));
+			}
+		}
+	}
 
-			if (pos[sq] != Empty || !pos.cand(sq) || sq == ttMove)
-				continue;   //skip ttMove
-
-			if (st.cntT[TH4][op] && pos.type(us, sq) < T4 && pos.type(op, sq) < T4)
-				continue;   //排除必输走法
-
-			int val = pos.value(us, sq) + pos.value(op, sq); //.............
-			*end++ = ExtMove(sq, val);
+	else {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.cand(sq) && pos[sq] == Empty && sq != ttMove)
+					*end++ = ExtMove(sq, pos.value(us, sq) + pos.value(op, sq));
+			}
 		}
 	}
 }
 
-void MovePicker::genQsearchMove() {
+void MovePicker::genVCFMove() {
 
 	Piece us = pos.side_to_move(), op = ~us;
 	const StateInfo& prevst = pos.prevst();
@@ -139,20 +169,27 @@ void MovePicker::genQsearchMove() {
 	[[unlikely]] if (lastMove == Square::NONE)
 		return;
 
-	if (st.cntT[T5][op]) {
-		if (st.T5Square != ttMove)
-			*end++ = ExtMove(st.T5Square);
-		return;
+	else if (st.cntT[T5][us]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.type(us, sq) == T5 && pos[sq] == Empty && sq != ttMove)
+					*end++ = ExtMove(sq);
+			}
+		}
 	}
 
-	constexpr int len = arrLen(EXPAND_L4);
-	for (int i = 0; i < len; i++) {
+	else if (st.cntT[T5][op]) {
+		assert(pos[st.T5Square] == Empty && pos.type(op, st.T5Square) == T5);
+		if (st.T5Square != ttMove)
+			*end++ = ExtMove(st.T5Square);
+	}
 
-		Square sq{ lastMove + EXPAND_L4[i] };
-
-		if (pos[sq] == Empty && sq != ttMove && pos.type(us, sq) >= T4) {
-			int val = pos.value(us, sq) + pos.value(op, sq);
-			*end++ = ExtMove(sq, val);
+	else {
+		constexpr int len = arrLen(EXPAND_L4);
+		for (int i = 0; i < len; i++) {
+			if (Square sq{ lastMove + EXPAND_L4[i] }; pos.type(us, sq) >= T4 && pos[sq] == Empty && sq != ttMove ) {
+				*end++ = ExtMove(sq, pos.value(us, sq) + pos.value(op, sq));
+			}
 		}
 	}
 }
@@ -188,20 +225,59 @@ void MovePicker::extraScore() {
 std::vector<Square> genRootMove(const Position& pos) { //?????
 
 	std::vector<Square> moves;
-
-	[[unlikely]] if (pos.cntMove() == 0) { //first move
-		moves.emplace_back(Square(pos.gameSize() / 2, pos.gameSize() / 2));
-		return moves;
-	}
-
 	Piece us = pos.side_to_move(), op = ~us;
 	const StateInfo& st = pos.st();
 
-	for (int i = st.range.x1; i <= st.range.x2; i++) {
-		for (int j = st.range.y1; j <= st.range.y2; j++) {
-			Square sq(i, j);
-			if (pos[sq] == Empty && pos.cand(sq))
-				moves.emplace_back(sq);
+	if (pos.cntMove() == 0) { //first move
+		moves.push_back(Square(pos.gameSize() / 2, pos.gameSize() / 2));
+	}
+
+	else if (st.cntT[T5][us]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.type(us, sq) == T5 && pos[sq] == Empty)
+					moves.push_back(sq);
+			}
+		}
+	}
+
+	else if (st.cntT[T5][op]) {
+		if (pos[st.T5Square] == Empty && pos.type(op, st.T5Square) == T5)
+			moves.push_back(st.T5Square);
+		else {
+			for (int i = st.range.x1; i <= st.range.x2; i++) {
+				for (int j = st.range.y1; j <= st.range.y2; j++) {
+					if (Square sq(i, j); pos.type(op, sq) == T5 && pos[sq] == Empty)
+						moves.push_back(sq);
+				}
+			}
+		}
+	}
+
+	else if (st.cntT[TH4][us]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.type(us, sq) == TH4 && pos[sq] == Empty)
+					moves.push_back(sq);
+			}
+		}
+	}
+
+	else if (st.cntT[TH4][op]) {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); (pos.type(us, sq) >= T4 || pos.type(op, sq) >= T4) && pos[sq] == Empty)
+					moves.push_back(sq);
+			}
+		}
+	}
+
+	else {
+		for (int i = st.range.x1; i <= st.range.x2; i++) {
+			for (int j = st.range.y1; j <= st.range.y2; j++) {
+				if (Square sq(i, j); pos.cand(sq) && pos[sq] == Empty)
+					moves.push_back(sq);
+			}
 		}
 	}
 

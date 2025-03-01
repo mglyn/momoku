@@ -1,6 +1,6 @@
 #include <windows.h>
 
-#include "../engine.h"
+#include "../../engine.h"
 #include "pisqpipe.h"
 
 namespace Piskvork {
@@ -30,7 +30,7 @@ namespace Piskvork {
         pipeOut("OK");
     }
 
-    void brain_restart(){
+    void brain_restart() {
         seq.clear();
         pipeOut("OK");
     }
@@ -60,7 +60,7 @@ namespace Piskvork {
         else pipeOut("ERROR winning move [%d,%d]", x, y);
     }
 
-    int brain_takeback(int x, int y){
+    int brain_takeback(int x, int y) {
         if (seq.size()) {
             seq.pop_back();
             return 0;

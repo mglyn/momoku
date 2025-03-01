@@ -9,9 +9,9 @@ static constexpr int checkMate(const Stack* ss, const Position& pos) {
 	Piece us = pos.side_to_move(), op = ~us;
 	const StateInfo& st = pos.st();
 
-	if ((ss - 1)->moveFT[op] == T5) 
+	if ((ss - 1)->moveFT[op] == T5)
 		return mated_in(ss->ply - 1);
-		
+
 	if (st.cntT[T5][us])
 		return mate_in(ss->ply);
 
@@ -23,7 +23,6 @@ static constexpr int checkMate(const Stack* ss, const Position& pos) {
 		return mate_in(ss->ply + 2);
 
 	if (st.cntT[TDH3][us] + st.cntT[T4H3][us] && !st.cntT[T4][op]) {
-		testData[TDH3T4H3wincheck]++;
 		return mate_in(ss->ply + 4);
 	}
 
@@ -78,6 +77,8 @@ Worker::Worker(SharedState& sharedState,
 }
 
 void Worker::start_searching() {
+
+	if (rootPos.st().cntT[T5]);
 
 	// Non-main threads go directly to iterative_deepening()
 	if (!is_mainthread()) {
@@ -269,7 +270,7 @@ void Worker::iterative_deepening() {
 				// we suppress this output and below pick a proven score/PV for this
 				// thread (from the previous iteration).
 				&& !(threads.abortedSearch && is_loss(rootMoves[0].uciScore)))
-					main_manager()->pv(*this, threads, tt, rootDepth);
+				main_manager()->pv(*this, threads, tt, rootDepth);
 
 			if (threads.stop)
 				break;
@@ -309,9 +310,9 @@ void Worker::iterative_deepening() {
 		}
 
 		// Do we have time for the next iteration? Can we stop searching now?
-		if (limits.use_time_management() && !threads.stop) {
+		if (!threads.stop) {
 			// Stop the search if we have exceeded the totalTime
-			if (elapsed_time() > mainThread->tm.optimum())
+			if (elapsed_time() > limits.movetime || (limits.nodes && nodes > limits.nodes))
 				threads.stop = true;
 		}
 	}
@@ -335,8 +336,8 @@ void Worker::clear() {
 
 //template............
 int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, Depth depth, bool cutNode) {
-	
- 	bool PvNode = NT != NonPV;
+
+	bool PvNode = NT != NonPV;
 	bool rootNode = NT == Root;
 
 	//深度小于零qsearch
@@ -391,7 +392,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 		if (threads.stop.load(std::memory_order_relaxed) || ss->ply >= MAX_PLY)
 			return VALUE_DRAW;
-		
+
 		// Step 3. Mate distance pruning. Even if we mate at the next move our score
 		// would be at best mate_in(ss->ply + 1), but if alpha is already bigger because
 		// a shorter mate was found upward in the tree then there is no need to search
@@ -427,7 +428,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 		&& is_valid(ttData.value)  // Can happen when !ttHit or when access race in probe()
 		&& (ttData.bound & (ttData.value >= beta ? BOUND_LOWER : BOUND_UPPER))
 		&& (cutNode == (ttData.value >= beta) || depth > 9)) {
-	
+
 		// Update move heruistics for ttMove
 		// Validate ttMove first
 		if (ttData.move.is_ok() && pos[ttData.move] == Empty &&
@@ -479,7 +480,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 	// Step 7. Futility pruning: child node
 	// The depth condition is important for mate finding.
-	if (!ss->ttPv && depth < 16 && 
+	if (!ss->ttPv && depth < 16 &&
 		!is_loss(beta) && !is_win(eval) &&
 		eval - (12 * depth * depth + 80) >= beta
 		&& (!ttData.move)) {
@@ -515,7 +516,7 @@ moves_loop:
 		// In MultiPV mode we also skip PV moves that have been already searched.
 		if (rootNode
 			&& !std::count(thisThread->rootMoves.begin() + thisThread->pvIdx,
-						   thisThread->rootMoves.begin() + thisThread->pvLast, move))
+				thisThread->rootMoves.begin() + thisThread->pvLast, move))
 			continue;
 
 		moveCount++;
@@ -540,7 +541,7 @@ moves_loop:
 
 		//pruning at shallow depth
 		if (!rootNode && !is_loss(bestValue)) {
-			
+
 			// Prun distract defence move which is likely to delay a winning
 			if (dispersed && opT && pos.type(op, move) < T4 && depth <= 4) {
 				testData[dispersedT]++;
@@ -586,7 +587,7 @@ moves_loop:
 		// best move, principal variation nor transposition table.
 		if (threads.stop.load(std::memory_order_relaxed))
 			return VALUE_ZERO;
-		
+
 		if (rootNode) {
 
 			RootMove& rm =
@@ -607,11 +608,11 @@ moves_loop:
 				rm.selDepth = thisThread->selDepth;
 				rm.scoreLowerbound = rm.scoreUpperbound = false;
 
-				if (value >= beta){
+				if (value >= beta) {
 					rm.scoreLowerbound = true;
 					rm.uciScore = beta;
 				}
-				else if (value <= alpha){
+				else if (value <= alpha) {
 					rm.scoreUpperbound = true;
 					rm.uciScore = alpha;
 				}
@@ -659,11 +660,11 @@ moves_loop:
 		}
 
 		// If the move is worse than some previously searched move,
-	    // remember it, to update its stats later.
+		// remember it, to update its stats later.
 		if (move != bestMove && moveCount <= 32) {
 			if (ss->moveFT[us] >= TH3)
 				threatsSearched.push_back(move);
-			else if(!opT)
+			else if (!opT)
 				quietsSearched.push_back(move);
 		}
 	}
@@ -671,7 +672,7 @@ moves_loop:
 	// Step 20. Check for mate
 	// All legal moves have been searched and if there are no legal moves,
 	// it must be a mate. If we are in a singular extension search then
-    // return a fail low score.
+	// return a fail low score.
 	if (!moveCount)
 		bestValue = mated_in(ss->ply);
 
@@ -698,12 +699,12 @@ moves_loop:
 			mainHistory[us][sq][HIST_THREAT] << -bonus;
 
 		// Update counter move history 
-		if(Square lastMove = pos.prevst().move; lastMove)
+		if (Square lastMove = pos.prevst().move; lastMove)
 			counterMoveHistory[op][lastMove.moveIndex()] = std::make_pair(bestMove, pos.type(us, bestMove));
 	}
 
 	// If no good move is found and the previous position was ttPv, then the previous
-    // opponent move is probably good and the new position is added to the search tree. (~7 Elo)
+	// opponent move is probably good and the new position is added to the search tree. (~7 Elo)
 	if (bestValue <= alpha)
 		ss->ttPv = ss->ttPv || ((ss - 1)->ttPv && depth > 3);
 

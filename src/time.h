@@ -22,8 +22,4 @@ public:
 	TimePoint maximum() const;
 	TimePoint elapsed_time() const { return now() - startTime; };
 };
-
-
 #endif
-
-

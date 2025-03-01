@@ -229,10 +229,9 @@ void PrintTest() {
     testText += "--------- TEST INFO ---------\n";
     testText += "main node:" + std::to_string(testData[mainn] / 1000.f) + "\n";
     testData[mainn] = 0;
-    testText += "q node:" + std::to_string(testData[qn] / 1000.f) + "\n";
+    testText += "vcf node:" + std::to_string(testData[qn] / 1000.f) + "\n";
     testData[qn] = 0;
-    testText += "vcf node:" + std::to_string(testData[vcfn] / 1000.f) + "\n";
-    testData[vcfn] = 0;
+    testText += "tot node:" + std::to_string((testData[qn] + testData[mainn]) / 1000.f) + "\n";
     testText += "TT cutoff: " + std::to_string(testData[TTcutoff] / 1000.f) + "\n";
     testData[TTcutoff] = 0;
     testText += "beta cutoff: " + std::to_string(testData[betacutoff] / 1000.f) + "\n";
@@ -245,8 +244,6 @@ void PrintTest() {
     testData[moveCntpruning] = 0;
     testText += "dispersed T: " + std::to_string(testData[dispersedT] / 1000.f) + "\n";
     testData[dispersedT] = 0;
-    testText += "TDH3 T4H3 win check: " + std::to_string(testData[TDH3T4H3wincheck] / 1000.f) + "\n";
-    testData[TDH3T4H3wincheck] = 0;
 
     testText += "razor:\n";
     for (int i = 0; i < 32; i++) {

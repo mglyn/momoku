@@ -16,7 +16,7 @@ struct Range {
 
 struct Unit {
 	Eval::Line line[4] = {};
-	Eval::CombPattern cp[SIDE_NUM] = {};
+	Eval::CombPattern cp[2];
 
 	inline void updateCombPattern() {
 		cp[P1] = Eval::decodeComb(line[0].lineP1, line[1].lineP1, line[2].lineP1, line[3].lineP1);
@@ -29,10 +29,10 @@ struct StateInfo {
 	// Copied when making a move //////////////////
 	uint8_t cntT[FTYPE_NUM][SIDE_NUM] = {};
 	int16_t valueP1 = 0;
+	Square T5Square;
 
 	// Not copied when making a move (will be recomputed anyhow)
 	Square move = Square::NONE;
-	Square T5Square;
 	Key key = 5211314;
 	Range range;
 };
@@ -88,6 +88,39 @@ public:
 	void set(const Position& cpos);
 	void make_move(Square sq);
 	void undo();
+
+	void DBG();
 };
+
+inline void Position::DBG() {
+
+	Piece board[15][15] = {};
+	for (int i = 0; i < 15; i++) {
+		for (int j = 0; j < 15; j++) {
+			board[i][j] = Empty;
+		}
+	}
+	Piece player = P1;
+	for (int u = 0; u <= _cntMove; u++) {
+		int x = _st[u].move.x(), y = _st[u].move.y();
+		board[x][y] = player;
+		player = ~player;
+
+		std::cout << "move" << u << "\n";
+		for (int i = 0; i < 15; i++) {
+			for (int j = 0; j < 15; j++) {
+
+				if (board[i][j] == P1)
+					std::cout << "# ";
+				else if (board[i][j] == P2)
+					std::cout << "@ ";
+				else
+					std::cout << "- ";
+			}
+			std::cout << "\n";
+		}
+	}
+}
+
 
 #endif

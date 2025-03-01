@@ -26,11 +26,10 @@ class MovePicker {
 	Square ttMove;
 	int stage;
 	ExtMove moves[MAX_MOVE];
-	ExtMove* cur, *end;
+	ExtMove* cur, * end;
 
 	void genMove();
 	void extraScore();
-	void genQsearchMove();
 	void genVCFMove();
 
 public:

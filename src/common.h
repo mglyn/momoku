@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <algorithm>
+#include <string>
 
 enum Piece :uint8_t {
 	P1 = 0,
@@ -136,6 +137,10 @@ struct Square {
 	bool operator ==(Square sq) const { return _sq == sq._sq; }
 	bool operator !=(Square sq) const { return _sq != sq._sq; }
 
+	constexpr std::string gomocupMove() const {
+		return std::to_string(x()) + ',' + std::to_string(y());
+	}
+
 	static const Square NONE;
 };
 
@@ -253,46 +258,45 @@ const int EXPAND_S2L4[] = { //S2L4
 	D_D * 4 + D_R * 4,
 };
 const int EXPAND_L4[] = { //L4
-	D_U * 4 + D_L * 4,
-	D_U * 4,
-	D_U * 4 + D_R * 4,
-
-	D_U * 3 + D_L * 3,
-	D_U * 3,
-	D_U * 3 + D_R * 3,
-
-	D_U * 2 + D_L * 2,
-	D_U * 2,
-	D_U * 2 + D_R * 2,
+	D_L,
+	D_L * 2,
+	D_L * 3,
+	D_L * 4,
 
 	D_U + D_L,
-	D_U,
-	D_U + D_R,
+	D_U * 2 + D_L * 2,
+	D_U * 3 + D_L * 3,
+	D_U * 4 + D_L * 4,
 
-	D_L * 4,
-	D_L * 3,
-	D_L * 2,
-	D_L,
+	D_U,
+	D_U * 2,
+	D_U * 3,
+	D_U * 4,
+
+	D_U + D_R,
+	D_U * 2 + D_R * 2,
+	D_U * 3 + D_R * 3,
+	D_U * 4 + D_R * 4,
+	
 	D_R,
 	D_R * 2,
 	D_R * 3,
 	D_R * 4,
 
-	D_D + D_L,
-	D_D,
 	D_D + D_R,
-
-	D_D * 2 + D_L * 2,
-	D_D * 2,
 	D_D * 2 + D_R * 2,
-
-	D_D * 3 + D_L * 3,
-	D_D * 3,
 	D_D * 3 + D_R * 3,
-
-	D_D * 4 + D_L * 4,
-	D_D * 4,
 	D_D * 4 + D_R * 4,
+
+	D_D,
+	D_D * 2,
+	D_D * 3,
+	D_D * 4,
+
+	D_D + D_L,
+	D_D * 2 + D_L * 2,
+	D_D * 3 + D_L * 3,
+	D_D * 4 + D_L * 4,
 };
 
 #endif

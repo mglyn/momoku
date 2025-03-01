@@ -96,14 +96,12 @@ void aligned_large_pages_free(void* mem);
 enum Test {
     mainn,
     qn,
-    vcfn,
     TTcutoff,
     betacutoff,
     vcfTTcutoff,
     vcfbetacutoff,
     moveCntpruning,
     dispersedT,
-    TDH3T4H3wincheck,
     razor,
     futility = 60,
 };

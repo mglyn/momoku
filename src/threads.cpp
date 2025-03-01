@@ -110,7 +110,7 @@ uint64_t ThreadPool::nodes_searched() const { return accumulate(&Worker::nodes);
 // Creates/destroys threads to match the requested number.
 // Created and launched threads will immediately go to sleep in idle_loop.
 // Upon resizing, threads are recreated to allow for binding if necessary.
-void ThreadPool::set(SharedState sharedState, 
+void ThreadPool::set(SharedState sharedState,
     const SearchManager::UpdateContext& updateContext) {
 
     if (threads.size() > 0) { // destroy any existing thread(s)
@@ -129,7 +129,7 @@ void ThreadPool::set(SharedState sharedState,
                 std::make_unique<SearchManager>(updateContext))
                 : std::make_unique<NullSearchManager>();
 
-            threads.emplace_back( std::make_unique<Thread>(sharedState, std::move(manager), threadId));
+            threads.emplace_back(std::make_unique<Thread>(sharedState, std::move(manager), threadId));
         }
 
         clear();
@@ -256,20 +256,20 @@ Thread* ThreadPool::get_best_thread() const {
             thread_voting_value(th.get()) * int(newThreadPV.size() > 2)
           > thread_voting_value(bestThread) * int(bestThreadPV.size() > 2);
 
-          if (bestThreadInProvenWin) {
-              // Make sure we pick the shortest mate
-              if (newThreadScore > bestThreadScore)
-                  bestThread = th.get();
-          }
-          else if (bestThreadInProvenLoss) {
-              // Make sure we pick the shortest mated
-              if (newThreadInProvenLoss && newThreadScore < bestThreadScore)
-                  bestThread = th.get();
-          }
-          else if (newThreadInProvenWin || newThreadInProvenLoss ||
-              (!is_loss(newThreadScore) && (newThreadMoveVote > bestThreadMoveVote || (newThreadMoveVote == bestThreadMoveVote && betterVotingValue)))) {
-              bestThread = th.get();
-          }
+        if (bestThreadInProvenWin) {
+            // Make sure we pick the shortest mate
+            if (newThreadScore > bestThreadScore)
+                bestThread = th.get();
+        }
+        else if (bestThreadInProvenLoss) {
+            // Make sure we pick the shortest mated
+            if (newThreadInProvenLoss && newThreadScore < bestThreadScore)
+                bestThread = th.get();
+        }
+        else if (newThreadInProvenWin || newThreadInProvenLoss ||
+            (!is_loss(newThreadScore) && (newThreadMoveVote > bestThreadMoveVote || (newThreadMoveVote == bestThreadMoveVote && betterVotingValue)))) {
+            bestThread = th.get();
+        }
     }
 
     return bestThread;
@@ -292,4 +292,3 @@ void ThreadPool::wait_for_search_finished() const {
         if (th != threads.front())
             th->wait_for_search_finished();
 }
-

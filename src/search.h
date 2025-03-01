@@ -58,10 +58,12 @@ struct RootMove {
 struct LimitsType {
 	std::vector<Square>		 searchmoves;
 	TimePoint                time[2], startTime, movetime;
+	size_t					 nodes;
 
 	// Init explicitly due to broken value-initialization of non POD in MSVC
 	LimitsType() {
 		startTime = time[P1] = time[P2] = movetime = TimePoint(0);
+		nodes = 0;
 	}
 
 	bool use_time_management() const { return time[P1] || time[P2]; }
@@ -216,5 +218,3 @@ public:
 };
 
 #endif
-
-

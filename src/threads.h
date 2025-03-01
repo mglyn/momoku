@@ -91,9 +91,9 @@ public:
     void   set(SharedState, const SearchManager::UpdateContext&);
 
     SearchManager* main_manager() const;
-    Thread*        main_thread() const { return threads.front().get(); }
+    Thread* main_thread() const { return threads.front().get(); }
     uint64_t       nodes_searched() const;
-    Thread*        get_best_thread() const;
+    Thread* get_best_thread() const;
     void           start_searching();
     void           wait_for_search_finished() const;
 
@@ -107,7 +107,4 @@ public:
     auto empty() const noexcept { return threads.empty(); }
 };
 
-
-   
-
-#endif  // #ifndef THREAD_H_INCLUDED
+#endif
