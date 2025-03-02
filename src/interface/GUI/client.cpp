@@ -38,7 +38,7 @@ Client::Client() {
 		}
 	}
 
-	char strplay[12][32] = { "PV","计算","撤销","重置","调试信息","selfplay","openning","read" };
+	char strplay[12][32] = { "PV","计算","撤销","重置","调试信息","","openning","read" };
 	for (int i = 0; i < 12; i++) {
 		int x = buttons.size() / 6, y = buttons.size() % 6;
 		buttons.emplace_back(int(width * 0.15 + y * btnw), int(height * 0.87 + x * btnh),
@@ -73,9 +73,9 @@ void Client::init_search_update_listeners() {
 
 		std::stringstream ss;
 
-		ss << " depth " << info.depth 
+		ss  << " multipv " << info.multiPV 
+			<< " depth " << info.depth
 			<< " seldepth " << info.selDepth     
-			<< " multipv " << info.multiPV      
 			<< " score " << info.score
 			<< " nodes " << info.nodes
 			<< " nps " << info.nps
@@ -89,15 +89,23 @@ void Client::init_search_update_listeners() {
 		sync_cout << ss.str() << sync_endl;
 		});
 
-	engine.set_on_bestmove([this](Square bm) {
+	engine.set_on_bestmove([this](const std::vector<RootMove>& rootMoves) {
 
 		std::stringstream ss;
 
-		ss << " bm " << std::to_string(bm.x()) + "," + std::to_string(bm.y());
+		ss << " bm " << rootMoves[0].pv[0].gomocupMove();
+		ss << " pv ";
+		for (auto& i : rootMoves[0].pv) {
+			ss << i.gomocupMove() << " ";
+		}
 
 		sync_cout << ss.str() << sync_endl;
 		pipe.write(ss.str());
 		PrintTest();
+
+		for (int i = 0; i < rootMoves.size();i++) {
+			sync_cout << "pv" << i << ": " << rootMoves[i].pv[0].gomocupMove() << sync_endl;
+		}
 		});
 }
 
@@ -119,7 +127,11 @@ void Client::updateStats() {
 		std::string token;
 
 		while (ss >> token) {
-			if (token == "depth") {
+			if (token == "multipv") {
+				if (ss >> token; stoi(token) != 1)  //only display first pv
+					std::getline(ss, token);
+			}
+			else if (token == "depth") {
 				ss >> token;
 				info[0].set_text("depth: " + token);
 			}
@@ -129,20 +141,17 @@ void Client::updateStats() {
 			}
 			else if (token == "currmove") {
 				ss >> token;
+				info[2].set_text("currmove: " + token);
+
 				std::stringstream t(token);
 				std::string x, y;
 				std::getline(t, x, ',');
 				std::getline(t, y, ',');
-
 				searchedMoves.emplace_back(board_stx + (stoi(y) - 0.5) * grid_size,
 					board_sty + (stoi(x) - 0.5) * grid_size, grid_size, grid_size, SearchedMoves, "", graphics);
 				searchingMove.clear();
 				searchingMove.emplace_back(board_stx + (stoi(y) - 0.5) * grid_size,
 					board_sty + (stoi(x) - 0.5) * grid_size, grid_size, grid_size, SearchingMove, "", graphics);
-			}
-			else if (token == "multipv") {
-				ss >> token;
-				info[2].set_text("multipv: " + token);
 			}
 			else if (token == "score") {
 				ss >> token;
@@ -328,9 +337,7 @@ void Client::Loop() {
 			else if (square == 4) {//DBG
 				engine.consoleDBG(gameSize, seq);
 			}
-			else if (square == 5) {//selfplay
-				static std::unique_ptr<std::jthread> selfPlayThread;
-				selfPlayThread = std::make_unique<std::jthread>(selfplay, std::ref(pipe), 999);
+			else if (square == 5) {
 			}
 			else if (square == 6) {//beginning
 				seq.clear();
@@ -344,6 +351,9 @@ void Client::Loop() {
 			}
 			else if (square == 7) {//read
 				readAll();
+			}
+			else if (square == 8) {
+
 			}
 		}
 	}

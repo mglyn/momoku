@@ -2,6 +2,7 @@
 #define SELFPLAY
 
 #include "../../engine.h"
+#include "client.h"
 #include "pipe.h"
 
 #include <iostream>
@@ -14,118 +15,59 @@ constexpr int statesPerFile = 4096;
 struct State {
 	int8_t side_to_move;
 	int16_t eval;
+    int16_t bestMove;
+    int8_t gameResult;
 	int8_t board[15][15];
 };
 
 class Writer {
     Pipe<State> pipe_;
     std::atomic<bool> writingDone;
-    std::string generateFileName() {
-        static std::random_device rd;
-        static std::mt19937 gen(rd());
-        static std::uniform_int_distribution<> dis(1, 1000000);
- 
-        std::ostringstream oss;
-        oss << "data/states_" << std::setw(6) << std::setfill('0') << dis(gen) << ".bin";
-        return oss.str();
-    }
- 
+    std::string generateFileName();
+
 public:
-    Writer() : writingDone(false) {
-        std::thread writerThread([this]() { this->writeLoop(); });
-        writerThread.detach();
-    }
- 
-    void writeLoop() {
-        const size_t statesPerFile = 4096;
-        size_t count = 0;
-        std::ofstream outFile;
- 
-        while (!pipe_.done()) {
-			for (State state; pipe_.read(state);) {
-                if (count % statesPerFile == 0) {
-                    if (outFile.is_open()) 
-						outFile.close();
-
-					int tryNum = 0;
-					do {
-						outFile.open(generateFileName(), std::ios::binary);
-						tryNum++;
-					} while (!outFile.is_open() && tryNum < 16);
-					assert(outFile.is_open());
-                }
-                outFile.write(reinterpret_cast<const char*>(&state), sizeof(State));
-                count++;
-            }
-        }
-		writingDone = true;
-    }
-
-    void write(const State& state) {
-        pipe_.write(state);
-    }
- 
-    void finish() {
-        pipe_.terminate();
-    }
- 
-    bool isDone() const {
-        return writingDone;
-    }
+    Writer();
+    void writeThreadLoop();
+    void write(const State& state) { pipe_.write(state); }
+    void finish() { pipe_.terminate(); }
+    bool isDone() const { return writingDone; }
 };
 
 namespace fs = std::filesystem;
 class Reader {
+    // 读取并打印单个文件的内容
+    void readAndPrintFile(const fs::path& filePath);
+    // 打印单个State的内容
+    void printState(const State& state);
 public:
     // 读取并打印所有符合条件的文件
-    void readFiles() {
-        try {
-            for (const auto& entry : fs::directory_iterator("data")) {
-                if (entry.is_regular_file() &&
-                    entry.path().filename().string().find("state_") == 0 &&
-                    entry.path().filename().string().find(".bin") != std::string::npos) {
-                    readAndPrintFile(entry.path());
-                }
-            }
-        }
-        catch (const fs::filesystem_error& e) {
-            std::cerr << "Filesystem error: " << e.what() << std::endl;
-        }
-    }
-
-private:
-    // 读取并打印单个文件的内容
-    void readAndPrintFile(const fs::path& filePath) {
-        std::ifstream file(filePath, std::ios::binary);
-        if (!file.is_open()) {
-            std::cerr << "Failed to open file: " << filePath << std::endl;
-            return;
-        }
-
-        std::cout << "Content of " << filePath << ":" << std::endl;
-        State state;
-        while (file.read(reinterpret_cast<char*>(&state), sizeof(State))) {
-            printState(state);
-        }
-        std::cout << "----------------------------------------" << std::endl;
-        file.close();
-    }
-
-    // 打印单个State的内容
-    void printState(const State& state) {
-        std::cout << "Side to move: " << static_cast<int>(state.side_to_move) << std::endl;
-        std::cout << "Evaluation: " << state.eval << std::endl;
-        std::cout << "Board:" << std::endl;
-        for (int i = 0; i < 15; ++i) {
-            for (int j = 0; j < 15; ++j) {
-                std::cout << std::setw(2) << static_cast<int>(state.board[i][j]) << " ";
-            }
-            std::cout << std::endl;
-        }
-    }
+    void readFiles();
 };
 
-void selfplay(Pipe<std::string>& pipe, int gameCnt);
+void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe);
+
+class miniGUI {
+    static constexpr int width = 1600;
+    static constexpr int height = 900;
+    static constexpr int board_size = 170;
+    static constexpr int all_board_stx = (width - (board_size + 20) * 8) / 2;
+    static constexpr int all_board_sty = height * 0.05;
+    static constexpr int gameSize = 15;
+    static constexpr int grid_size = board_size / (gameSize - 1);
+
+    std::shared_ptr<Gdiplus::Graphics> graphics;
+    std::vector<Widget> pieces;
+    std::vector<Piece> side_to_move;
+    std::vector<Widget> info;
+    Pipe<std::string> pipe;
+
+    void Draw(std::vector<Widget>& pieces, std::vector<Widget>& info);
+    void updateStats();
+
+public:
+    miniGUI();
+    void selfPlayParallel();
+};
 
 void readAll();
 #endif

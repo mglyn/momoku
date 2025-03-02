@@ -62,7 +62,7 @@ enum : int {
 
 using Key = uint64_t;
 
-constexpr int MAX_PLY = 246;
+constexpr int MAX_PLY = 250;
 
 constexpr int BOARD_LENGTH = 32;
 constexpr int BOARD_SIZE = BOARD_LENGTH * BOARD_LENGTH;

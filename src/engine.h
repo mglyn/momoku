@@ -59,7 +59,7 @@ public:
 	void set_on_update_no_moves(std::function<void(const InfoShort&)>&&);
 	void set_on_update_full(std::function<void(const InfoFull&)>&&);
 	void set_on_iter(std::function<void(const InfoIteration&)>&&);
-	void set_on_bestmove(std::function<void(Square)>&&);
+	void set_on_bestmove(std::function<void(const std::vector<RootMove>&)>&&);
 
 	// utility functions
 	int get_hashfull(int maxAge = 0) const;

@@ -16,8 +16,8 @@ namespace Eval {
 	};
 
 	struct CombPattern {
-		uint8_t value;
 		FType type;
+		uint8_t value;
 	};
 
 	Line decodeLine(uint64_t code);

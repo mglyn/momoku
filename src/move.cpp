@@ -141,8 +141,10 @@ void MovePicker::genMove() {
 	else if (st.cntT[TH4][op]) {
 		for (int i = st.range.x1; i <= st.range.x2; i++) {
 			for (int j = st.range.y1; j <= st.range.y2; j++) {
-				if (Square sq(i, j); (pos.type(us, sq) >= T4 || pos.type(op, sq) >= T4) && pos[sq] == Empty && sq != ttMove)
-					*end++ = ExtMove(sq, pos.value(us, sq) + pos.value(op, sq));
+				if (Square sq(i, j); (pos.type(us, sq) >= T4 || pos.type(op, sq) >= T4) && pos[sq] == Empty && sq != ttMove) {
+					int score = pos.value(us, sq) + pos.value(op, sq);
+					*end++ = ExtMove(sq, score);/////////
+				}
 			}
 		}
 	}
@@ -150,8 +152,10 @@ void MovePicker::genMove() {
 	else {
 		for (int i = st.range.x1; i <= st.range.x2; i++) {
 			for (int j = st.range.y1; j <= st.range.y2; j++) {
-				if (Square sq(i, j); pos.cand(sq) && pos[sq] == Empty && sq != ttMove)
-					*end++ = ExtMove(sq, pos.value(us, sq) + pos.value(op, sq));
+				if (Square sq(i, j); pos.cand(sq) && pos[sq] == Empty && sq != ttMove) {
+					int score = pos.value(us, sq) + pos.value(op, sq);
+					*end++ = ExtMove(sq, score);///////////
+				}
 			}
 		}
 	}

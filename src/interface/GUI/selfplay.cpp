@@ -5,6 +5,255 @@
 #include <fstream>
 #include <random>
 #include <string>
+#include <sstream>
+
+std::string Writer::generateFileName() {
+	static std::random_device rd;
+	static std::mt19937 gen(rd());
+	static std::uniform_int_distribution<> dis(1, 1000000);
+
+	std::ostringstream oss;
+	oss << "data/states_" << std::setw(6) << std::setfill('0') << dis(gen) << ".bin";
+	return oss.str();
+}
+
+Writer::Writer() : writingDone(false) {
+	std::thread writerThread([this]() { this->writeThreadLoop(); });
+	writerThread.detach();
+}
+
+void Writer::writeThreadLoop() {
+	const size_t statesPerFile = 4096;
+	size_t count = 0;
+	std::ofstream outFile;
+
+	while (!pipe_.done()) {
+		for (State state; pipe_.read(state);) {
+			if (count % 256 == 255) {
+				if (count % 2048 == 2047)
+					sync_cout << "writer writed 2048 states!!!!!!!!" << sync_endl;
+				else
+					sync_cout << "writer writed 256 states" << sync_endl;
+			}
+
+			if (count % statesPerFile == 0) {
+				if (outFile.is_open())
+					outFile.close();
+
+				int tryNum = 0;
+				do {
+					outFile.open(generateFileName(), std::ios::binary);
+					tryNum++;
+				} while (!outFile.is_open() && tryNum < 16);
+				assert(outFile.is_open());
+				sync_cout << "writer opened a new file" << sync_endl;
+			}
+			outFile.write(reinterpret_cast<const char*>(&state), sizeof(State));
+			count++;
+		}
+	}
+	writingDone = true;
+}
+
+void Reader::readAndPrintFile(const fs::path& filePath) {
+	std::ifstream file(filePath, std::ios::binary);
+	if (!file.is_open()) {
+		std::cerr << "Failed to open file: " << filePath << std::endl;
+		return;
+	}
+
+	std::cout << "Content of " << filePath << ":" << std::endl;
+	State state;
+	while (file.read(reinterpret_cast<char*>(&state), sizeof(State))) {
+		printState(state);
+	}
+	std::cout << "----------------------------------------" << std::endl;
+	file.close();
+}
+
+void Reader::printState(const State& state) {
+	std::cout << "Side to move: " << (state.side_to_move == 1 ? "@" : "#") << std::endl;
+	std::cout << "Evaluation: " << state.eval << std::endl;
+	std::cout << "BestMove: " << Square(state.bestMove).x() << "," << Square(state.bestMove).y() << std::endl;
+	std::cout << "Board:" << std::endl;
+	for (int i = 0; i < 15; ++i) {
+		for (int j = 0; j < 15; ++j) {
+			if (state.board[i][j] == 1) {
+				std::cout << "@ ";
+			}
+			else if (state.board[i][j] == -1) {
+				std::cout << "# ";
+			}
+			else {
+				std::cout << "- ";
+			}
+		}
+		std::cout << std::endl;
+	}
+}
+
+void Reader::readFiles() {
+	try {
+		for (const auto& entry : fs::directory_iterator("data")) {
+			if (entry.is_regular_file() &&
+				entry.path().filename().string().find("states_") == 0 &&
+				entry.path().filename().string().find(".bin") != std::string::npos) {
+				readAndPrintFile(entry.path());
+			}
+		}
+	}
+	catch (const fs::filesystem_error& e) {
+		std::cerr << "Filesystem error: " << e.what() << std::endl;
+	}
+}
+
+void miniGUI::Draw(std::vector<Widget>& pieces, std::vector<Widget>& info) {
+
+	BeginBatchDraw();
+	cleardevice();
+
+	//Gdiplus::Pen Pen_1(Gdiplus::Color(0, 0, 0), 1.f);
+	//for (int bi = 0; bi < 8; bi++) {
+	//    for (int bj = 0; bj < 4; bj++) {
+
+	//        int board_stx = all_board_stx + bi * (board_size + 20);
+	//        int board_sty = all_board_sty + bj * (board_size + 25);
+	//        //绘制线
+	//        for (int i = 0; i < gameSize; i++) {
+	//            Gdiplus::Point st(board_stx, board_sty + i * grid_size),
+	//                ed(board_stx + (gameSize - 1) * grid_size, board_sty + i * grid_size);
+	//            graphics->DrawLine(&Pen_1, st, ed);
+	//            st = Gdiplus::Point(board_stx + i * grid_size, board_sty),
+	//                ed = Gdiplus::Point(board_stx + i * grid_size, board_sty + (gameSize - 1) * grid_size);
+	//            graphics->DrawLine(&Pen_1, st, ed);
+	//        }
+	//    }
+	//}
+
+	for (auto& i : pieces)i.show();
+	for (auto& i : info)i.show();
+
+	EndBatchDraw();
+}
+
+void miniGUI::updateStats() {
+	for (std::string str; pipe.read(str);) {
+		std::stringstream ss(str);
+
+		std::string token;
+
+		while (ss >> token) {
+			if (token == "thread") {
+				ss >> token;
+				int id = stoi(token);
+
+				ss >> token;
+
+				if (token == "score") {
+					ss >> token;
+					info[id].set_text("score: " + token);
+				}
+				else if (token == "bm") {
+					ss >> token;
+					std::stringstream t(token);
+					std::string xx, yy;
+					std::getline(t, xx, ',');
+					std::getline(t, yy, ',');
+					int x = stoi(xx), y = stoi(yy);
+
+					int pn = id * gameSize * gameSize + x * gameSize + y;
+					pieces[pn].set_type(side_to_move[id] == P1 ? Black : White);
+					info[id].set_text("bm " + token);
+					side_to_move[id] = ~side_to_move[id];
+				}
+				else if (token == "clear") {
+					int pn = id * gameSize * gameSize;
+					for (int i = pn; i < pn + gameSize * gameSize; i++) {
+						assert(i < pieces.size() && i >= 0);
+						pieces[i].set_type(EmptyCell);
+					}
+					info[id].set_text("");
+					side_to_move[id] = P1;
+				}
+			}
+		}
+	}
+}
+
+miniGUI::miniGUI() {
+
+	initgraph(width, height);
+	//背景
+	setbkcolor(RGB(220, 220, 210));
+
+	//字体
+	LOGFONT f;
+	gettextstyle(&f);
+	_tcscpy_s(f.lfFaceName, _T("微软雅黑"));
+	f.lfQuality = ANTIALIASED_QUALITY;
+	settextstyle(&f);
+	setbkmode(TRANSPARENT);
+
+	//初始化GDI
+	graphics = std::make_shared<Gdiplus::Graphics>(GetImageHDC());
+	Gdiplus::GdiplusStartupInput Input;
+	ULONG_PTR Token;
+	Gdiplus::GdiplusStartup(&Token, &Input, NULL);
+	// 设置绘图质量为高质量
+	graphics->SetSmoothingMode(Gdiplus::SmoothingMode::
+		SmoothingModeHighQuality);
+
+	for (int bi = 0; bi < 8; bi++) {
+		for (int bj = 0; bj < 4; bj++) {
+
+			int board_stx = all_board_stx + bi * (board_size + 20);
+			int board_sty = all_board_sty + bj * (board_size + 20);
+
+			for (int i = 0; i < gameSize; i++) {
+				for (int j = 0; j < gameSize; j++) {
+
+					pieces.emplace_back(board_stx + (i - 0.5) * grid_size,
+						board_sty + (j - 0.5) * grid_size, grid_size, grid_size, EmptyCell, "", graphics);
+				}
+			}
+			side_to_move.push_back(P1);
+			info.emplace_back(all_board_stx + bi * (board_size + 20),
+				all_board_sty + bj * (board_size + 25) + board_size + 1,
+				board_size, 20, infoCell, "hellofsdfda", graphics);
+		}
+	}
+}
+
+void miniGUI::selfPlayParallel() {
+
+	Writer writer; // 共享的写入器（需确保线程安全）
+	std::vector<std::thread> threads;
+
+	// 创建并启动所有线程
+	for (int i = 0; i < 24; ++i) {
+		threads.emplace_back(selfPlayThreadFunc, &writer, i, &pipe);
+	}
+
+	while (true) {
+
+		static TimePoint lastDrawTime = now();
+		constexpr int frameRate = 10;
+		if (TimePoint elapsed = now() - lastDrawTime; elapsed < 1000 / frameRate) {
+			Sleep(1000 / frameRate - elapsed);
+		}
+		Draw(pieces, info);
+		lastDrawTime = now();
+
+		updateStats();
+	}
+
+	// 等待所有线程结束（虽然当前selfplayThreadFunc是无限循环）
+	for (auto& thread : threads) {
+		if (thread.joinable()) {
+			thread.join();
+		}
+	}
+}
 
 std::vector<std::vector<std::pair<int, int>>> opennings = {
 	{														},
@@ -51,127 +300,101 @@ std::vector<std::vector<std::pair<int, int>>> opennings = {
 	//{{-8, -6},	{-7, -6},	{-8, -5},	{-6, -4},	{-6, -5}}
 };
 
-static int getRandomInt(int a) {
-	// random_device 用于获得一个真正随机的种子
-	std::random_device rd;
-	// mt19937 是一个高质量的伪随机数生成器
-	std::mt19937 gen(rd());
-	// uniform_int_distribution 用于生成均匀分布的整数
-	std::uniform_int_distribution<> distr(0, a - 1);
-	return distr(gen);
-}
+void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 
-void selfplay(Pipe<std::string>& pipe, int gameCnt) {
-	
+	std::random_device rd;
+	PRNG prng(rd());
+
 	Engine engine;
-	engine.set_options("nodes_limit", 600000);
-	engine.set_options("timeout_turn", 1000000);
+	engine.set_options("timeout_turn", 999999);
 	engine.set_on_iter([](const auto& info) {});
 	engine.set_on_update_no_moves([](const auto& info) {});
-	
+	engine.set_on_update_full([&](const auto& info) {});
 
-	Writer writer;
+	for (size_t counter = 0; true; counter++) {
 
-	for (int i = 0; i < gameCnt; i++) {
-
+		std::vector<State> states;
 		State state = {};
 		state.side_to_move = 1;
 		std::vector<Square> seq;
-		std::vector<std::pair<int, int>>openning = opennings[getRandomInt(opennings.size())];
 
-		for (auto& i : openning) {
+		//openning
+		std::vector<std::pair<int, int>>openning = opennings[(threadID + counter) % opennings.size()];
+		for (int i = 0; i < openning.size(); i++) {
 
-			Square sq = { 7 + i.first, 7 + i.second };
-
+			Square sq = { 7 + openning[i].first, 7 + openning[i].second };
 			seq.push_back(sq);
 			state.board[sq.x()][sq.y()] = state.side_to_move;
 			state.side_to_move = -state.side_to_move;
 
-			pipe.write(" bm " + sq.gomocupMove());
-			Sleep(10);
+			std::stringstream ss;
+			ss << "thread " << threadID << " bm " << sq.gomocupMove();
+			pipe->write(ss.str());
 		}
 
-		int randomMove = 0;
-		const int maxRandom = 8;
-		for (int moveCnt = 1, endGame = false; !endGame; moveCnt++) {
+		int endGame = -2;//unfinished
+		for (int calcCnt = 0; endGame == -2; calcCnt++) {
 
-			int multipv = 1;
-			engine.set_options("multipv", multipv);
-			std::vector<std::pair<int, Square>> moves;
+			int moveCnt = calcCnt + openning.size();
+			//const int multiTb[225] = { 3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 };
+			//const int randP[225] = { 50,50,50,50,50,50,40,40,40,40,40,40,30,30,30,30,30,30,20,20,20,20 };
+			const int multiTb[225] = { 3,3,3 };
+			const int randP[225] = { 70,70,70 };
+			const int multiPV = std::clamp(multiTb[calcCnt], 1, 4);
+			const int nodesperpv = 2000000;
+			engine.set_options("multipv", multiPV);
+			engine.set_options("nodes_limit", multiPV * nodesperpv);
 
-			if (randomMove < maxRandom) {
-				multipv = 2;
-				engine.set_options("multipv", multipv);
-			}
+			std::vector<RootMove> moves;
 
-			engine.set_on_update_full([&](const InfoFull& info) {
+			engine.set_on_bestmove([&](std::vector<RootMove> rootMoves) {
 
-				std::stringstream ss;
-
-				ss << " depth " << info.depth
-					<< " seldepth " << info.selDepth
-					<< " multipv " << info.multiPV
-					<< " score " << info.score
-					<< " nodes " << info.nodes
-					<< " nps " << info.nps
-					<< " time " << info.timeMs;
-
-				sync_cout << ss.str() << sync_endl;
-				pipe.write(ss.str());
-
-				if (info.score != -VALUE_INFINITE) {
-					int i = 0;
-					for (; i < moves.size(); i++) {
-						if (moves[i].second == info.pv[0]) {
-							moves[i] = { info.score,info.pv[0] };
-							break;
-						}
-					}
-					if (i == moves.size()) {
-						moves.push_back({ info.score,info.pv[0] });
-					}
-				}
-				});
-
-			engine.set_on_bestmove([&](Square bm) {
-				std::stringstream ss;
-				ss << " bm " << bm.gomocupMove();
-				sync_cout << ss.str() << sync_endl;
+				moves = rootMoves;
+				state.eval = rootMoves[0].score;
+				state.bestMove = rootMoves[0].pv[0];
 				});
 
 			engine.go(15, seq);
 			engine.wait_for_search_finished();
 
+			Square choosed = moves[0].pv[0];
+			auto a = prng.rand<size_t>();
+			auto b = prng.rand<size_t>();
 
-			std::sort(moves.begin(), moves.end(),
-				[](std::pair<int, Square> a, std::pair<int, Square> b) {return a.first > b.first; });
+			if (moves.size() - 1 >= b % multiPV &&
+				moves[b % multiPV].score > -200 &&
+				moves[0].score - moves[b % multiPV].score < 150 &&
+				a % 100 < randP[moveCnt]) {
 
-			state.eval = moves[0].first;
-			writer.write(state);
-
-			Square choosed = moves[0].second;
-			if (randomMove < maxRandom && getRandomInt(100) < std::clamp(30 - moveCnt * 2, 0, 100)) {
-				int r = getRandomInt((std::min)(multipv, (int)moves.size()) - 1) + 1;
-				if (moves[0].first - moves[r].first < 150) {
-					std::cout << "PICKED WEAKER " << ++randomMove << "/" << maxRandom << "\n";
-					std::cout << "ORIGINAL " << moves[0].first << " " << moves[0].second.x() << "," << moves[0].second.y() << "\n";
-					std::cout << "NEW      " << moves[r].first << " " << moves[r].second.x() << "," << moves[r].second.y() << "\n";
-					choosed = moves[r].second;
-				}
+				choosed = moves[b % multiPV].pv[0];
+				//std::cout << "rand" << "\n";
 			}
-			
-			seq.push_back(choosed);
-			state.board[choosed.x()][choosed.y()] = state.side_to_move;
-			pipe.write("bm " + choosed.gomocupMove());
 
-			state.side_to_move = -state.side_to_move;
 			if (state.eval == VALUE_MATE)
-				endGame = true;
+				endGame = state.side_to_move;
+			else if (seq.size() >= 200)
+				endGame = 0;
 
-			Sleep(2000);
+			seq.push_back(choosed);
+			if (calcCnt >= 3)
+				states.push_back(state);//record state
+
+			state.board[choosed.x()][choosed.y()] = state.side_to_move;
+			state.side_to_move = -state.side_to_move;
+
+			std::stringstream ss;
+			ss << "thread " << threadID << " bm " << choosed.gomocupMove();
+			pipe->write(ss.str());
 		}
 
-		pipe.write("clear");
+		for (int i = 0; i < states.size(); i++) {
+			states[i].gameResult = endGame;
+			writer->write(states[i]);
+		}
+
+		std::stringstream ss;
+		ss << "thread " << threadID << " clear";
+		pipe->write(ss.str());
 	}
 }
 

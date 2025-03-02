@@ -202,7 +202,8 @@ void Position::make_move(Square sq) {
 			st.valueP1 -= v.cp[P2].value;
 			st.cntT[v.cp[P2].type][P2]++;
 
-			st.T5Square = v.cp[_side_to_move].type == T5 ? npos : st.T5Square;
+			if (v.cp[_side_to_move].type == T5)
+				st.T5Square = npos;
 		}
 	}
 	_side_to_move = ~_side_to_move;

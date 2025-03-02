@@ -35,7 +35,7 @@ static int staticEval(const Position& pos) {
 	const StateInfo& prevst = pos.prevst();
 
 	int evalP1 = (st.valueP1 + prevst.valueP1) / 2;
-
+	
 	if (evalP1 == 0)return 1;
 	return us == P1 ? evalP1 : -evalP1;
 }
@@ -78,8 +78,6 @@ Worker::Worker(SharedState& sharedState,
 
 void Worker::start_searching() {
 
-	if (rootPos.st().cntT[T5]);
-
 	// Non-main threads go directly to iterative_deepening()
 	if (!is_mainthread()) {
 		iterative_deepening();
@@ -117,7 +115,7 @@ void Worker::start_searching() {
 	if (bestThread != this)
 		main_manager()->pv(*bestThread, threads, tt, bestThread->completedDepth);
 
-	main_manager()->updates.onBestmove(bestThread->rootMoves[0].pv[0]);
+	main_manager()->updates.onBestmove(bestThread->rootMoves);
 }
 
 Depth Worker::pick_next_depth(int lastDepth) {
@@ -339,7 +337,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 	bool PvNode = NT != NonPV;
 	bool rootNode = NT == Root;
-
+	nodes;
 	//深度小于零qsearch
 	if (depth <= 0) {
 		return qsearch(NT, pos, ss, alpha, beta);
@@ -472,7 +470,9 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 	// Step 6. Razoring
 	// If eval is really low, skip search entirely and return the qsearch value.
 	// For PvNodes, we must have a guard against mates being returned.
-	if (!PvNode && eval + 10 * depth * depth + 48 < alpha) {
+	if (!PvNode && depth < 14 && 
+		(!is_win(alpha) || !ttHit) &&
+		eval + 10 * depth * depth + 48 < alpha) {
 		testData[razor + (int)depth]++;
 		value = qsearch(NonPV, pos, ss, alpha, alpha + 1);
 		return value;
@@ -480,7 +480,7 @@ int Worker::search(NType NT, Position& pos, Stack* ss, Value alpha, Value beta, 
 
 	// Step 7. Futility pruning: child node
 	// The depth condition is important for mate finding.
-	if (!ss->ttPv && depth < 16 &&
+	if (!ss->ttPv && depth < 14 &&
 		!is_loss(beta) && !is_win(eval) &&
 		eval - (12 * depth * depth + 80) >= beta
 		&& (!ttData.move)) {
@@ -807,7 +807,7 @@ int Worker::qsearch(NType NT, Position& pos, Stack* ss, Value alpha, Value beta)
 				bestValue = ttData.value;
 		}
 		else {
-			ss->staticEval = bestValue = staticEval(pos);
+			ss->staticEval = bestValue = staticEval(pos) + (nodes & 3);//randdddddddddddddddddddddddddddddddddddddddd;
 		}
 
 		// Stand pat. Return immediately if static value is at least beta

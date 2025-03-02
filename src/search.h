@@ -119,7 +119,7 @@ public:
 	using UpdateShort = std::function<void(const InfoShort&)>;
 	using UpdateFull = std::function<void(const InfoFull&)>;
 	using UpdateIter = std::function<void(const InfoIteration&)>;
-	using UpdateBestmove = std::function<void(Square)>;
+	using UpdateBestmove = std::function<void(const std::vector<RootMove>&)>;
 
 	struct UpdateContext {
 		UpdateShort    onUpdateNoMoves;

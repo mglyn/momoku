@@ -14,8 +14,8 @@ namespace Piskvork {
         engine.set_on_iter([](const auto& i) {});
         engine.set_on_update_no_moves([](const auto& i) {});
         engine.set_on_update_full([](const auto& i) {});
-        engine.set_on_bestmove([](Square bm) {
-            do_mymove(bm.x(), bm.y());
+        engine.set_on_bestmove([](const std::vector<RootMove>& rootMoves) {
+            do_mymove(rootMoves[0].pv[0].x(), rootMoves[0].pv[0].y());
             });
 
         engine.set_options("timeout_turn", info_timeout_turn);

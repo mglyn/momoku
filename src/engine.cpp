@@ -13,7 +13,7 @@ int64_t& Options::operator[](const std::string& name) {
 
 Engine::Engine() {
 
-	options["timeout_turn"] = 1000;		//- time limit for each move(milliseconds, 0 = play as fast as possible)
+	options["timeout_turn"] = 999000;		//- time limit for each move(milliseconds, 0 = play as fast as possible)
 	options["timeout_match"] = 0;		//- time limit of a whole match(milliseconds, 0 = no limit)
 	options["max_memory"] = 300ULL * 1024ULL * 1024ULL;		//- memory limit(bytes, 0 = no limit)
 	options["time_left"] = 0;			//- remaining time limit of a whole match(milliseconds)
@@ -22,7 +22,7 @@ Engine::Engine() {
 	//options["evaluate"]				//- coordinates X, Y representing current position of the mouse cursor
 	//options["folder"]					//- folder for persistent files
 	options["multipv"] = 1;
-	options["nodes_limit"] = 0;
+	options["nodes_limit"] = 2000000;
 
 	options["Threads"] = 1;
 
@@ -92,7 +92,7 @@ void Engine::set_on_iter(std::function<void(const InfoIteration&)>&& f) {
 	updateContext.onIter = std::move(f);
 }
 
-void Engine::set_on_bestmove(std::function<void(Square)>&& f) {
+void Engine::set_on_bestmove(std::function<void(const std::vector<RootMove>&)>&& f) {
 	updateContext.onBestmove = std::move(f);
 }
 
