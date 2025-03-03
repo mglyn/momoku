@@ -230,7 +230,7 @@ void miniGUI::selfPlayParallel() {
 	std::vector<std::thread> threads;
 
 	// 创建并启动所有线程
-	for (int i = 0; i < 24; ++i) {
+	for (int i = 0; i < 32; ++i) {
 		threads.emplace_back(selfPlayThreadFunc, &writer, i, &pipe);
 	}
 
@@ -319,7 +319,7 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 		std::vector<Square> seq;
 
 		//openning
-		std::vector<std::pair<int, int>>openning = opennings[(threadID + counter) % opennings.size()];
+		std::vector<std::pair<int, int>>openning = opennings[prng.rand<size_t>() % opennings.size()];
 		for (int i = 0; i < openning.size(); i++) {
 
 			Square sq = { 7 + openning[i].first, 7 + openning[i].second };
@@ -338,8 +338,8 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 			int moveCnt = calcCnt + openning.size();
 			//const int multiTb[225] = { 3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 };
 			//const int randP[225] = { 50,50,50,50,50,50,40,40,40,40,40,40,30,30,30,30,30,30,20,20,20,20 };
-			const int multiTb[225] = { 3,3,3 };
-			const int randP[225] = { 70,70,70 };
+			const int multiTb[225] = { 3,3,3,3 };
+			const int randP[225] = { 70,70,70,50 };
 			const int multiPV = std::clamp(multiTb[calcCnt], 1, 4);
 			const int nodesperpv = 2000000;
 			engine.set_options("multipv", multiPV);
@@ -370,13 +370,13 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 				//std::cout << "rand" << "\n";
 			}
 
-			if (state.eval == VALUE_MATE)
+			if (state.eval >= 30000)
 				endGame = state.side_to_move;
-			else if (seq.size() >= 200)
+			else if (seq.size() >= 170)
 				endGame = 0;
 
 			seq.push_back(choosed);
-			if (calcCnt >= 3)
+			if (calcCnt >= 4)
 				states.push_back(state);//record state
 
 			state.board[choosed.x()][choosed.y()] = state.side_to_move;
@@ -389,6 +389,7 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 
 		for (int i = 0; i < states.size(); i++) {
 			states[i].gameResult = endGame;
+			if (abs(states[i].eval) < 30000);
 			writer->write(states[i]);
 		}
 

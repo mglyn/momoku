@@ -1,0 +1,66 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="move.cpp" />
+    <ClCompile Include="search.cpp" />
+    <ClCompile Include="threads.cpp" />
+    <ClCompile Include="tt.cpp" />
+    <ClCompile Include="eval.cpp" />
+    <ClCompile Include="engine.cpp" />
+    <ClCompile Include="position.cpp" />
+    <ClCompile Include="time.cpp" />
+    <ClCompile Include="misc.cpp" />
+    <ClCompile Include="interface\pisqpipe\example.cpp">
+      <Filter>interface\pisqpipe</Filter>
+    </ClCompile>
+    <ClCompile Include="interface\pisqpipe\pisqpipe.cpp">
+      <Filter>interface\pisqpipe</Filter>
+    </ClCompile>
+    <ClCompile Include="interface\GUI\client.cpp">
+      <Filter>interface\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="interface\GUI\selfplay.cpp">
+      <Filter>interface\GUI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="move.h" />
+    <ClInclude Include="search.h" />
+    <ClInclude Include="threads.h" />
+    <ClInclude Include="time.h" />
+    <ClInclude Include="tt.h" />
+    <ClInclude Include="common.h" />
+    <ClInclude Include="eval.h" />
+    <ClInclude Include="misc.h" />
+    <ClInclude Include="engine.h" />
+    <ClInclude Include="position.h" />
+    <ClInclude Include="history.h" />
+    <ClInclude Include="interface\pisqpipe\pisqpipe.h">
+      <Filter>interface\pisqpipe</Filter>
+    </ClInclude>
+    <ClInclude Include="interface\GUI\client.h">
+      <Filter>interface\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="interface\GUI\pipe.h">
+      <Filter>interface\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="interface\GUI\selfplay.h">
+      <Filter>interface\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="interface\GUI\widget.h">
+      <Filter>interface\GUI</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="interface">
+      <UniqueIdentifier>{427ba70b-411b-4e39-bc6c-dc112fe484f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interface\GUI">
+      <UniqueIdentifier>{376300cf-b151-4e94-b1fd-1d64a978efd0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interface\pisqpipe">
+      <UniqueIdentifier>{d35f685d-0655-4212-a973-ce7c86ecfb41}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
