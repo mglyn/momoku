@@ -230,7 +230,7 @@ void miniGUI::selfPlayParallel() {
 	std::vector<std::thread> threads;
 
 	// 创建并启动所有线程
-	for (int i = 0; i < 32; ++i) {
+	for (int i = 0; i < 24; ++i) {
 		threads.emplace_back(selfPlayThreadFunc, &writer, i, &pipe);
 	}
 
@@ -317,9 +317,10 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 		State state = {};
 		state.side_to_move = 1;
 		std::vector<Square> seq;
+		int lastRand = 0;
 
 		//openning
-		std::vector<std::pair<int, int>>openning = opennings[prng.rand<size_t>() % opennings.size()];
+		const std::vector<std::pair<int, int>>& openning = opennings[prng.rand<size_t>() % opennings.size()];
 		for (int i = 0; i < openning.size(); i++) {
 
 			Square sq = { 7 + openning[i].first, 7 + openning[i].second };
@@ -336,10 +337,7 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 		for (int calcCnt = 0; endGame == -2; calcCnt++) {
 
 			int moveCnt = calcCnt + openning.size();
-			//const int multiTb[225] = { 3,3,3,3,3,3,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2 };
-			//const int randP[225] = { 50,50,50,50,50,50,40,40,40,40,40,40,30,30,30,30,30,30,20,20,20,20 };
-			const int multiTb[225] = { 3,3,3,3 };
-			const int randP[225] = { 70,70,70,50 };
+			const int multiTb[225] = { 4,4,4,4,4,2,2,2,2,2 };
 			const int multiPV = std::clamp(multiTb[calcCnt], 1, 4);
 			const int nodesperpv = 2000000;
 			engine.set_options("multipv", multiPV);
@@ -359,18 +357,17 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 
 			Square choosed = moves[0].pv[0];
 			auto a = prng.rand<size_t>();
-			auto b = prng.rand<size_t>();
+			auto b = prng.rand<size_t>() % multiPV;
 
-			if (moves.size() - 1 >= b % multiPV &&
+			if (b != 0 && moves.size() > b &&
 				moves[b % multiPV].score > -200 &&
-				moves[0].score - moves[b % multiPV].score < 150 &&
-				a % 100 < randP[moveCnt]) {
-
+				moves[0].score - moves[b % multiPV].score < 40) {
 				choosed = moves[b % multiPV].pv[0];
-				//std::cout << "rand" << "\n";
+				lastRand = moveCnt;
+				std::cout << "thread " << threadID << " rand" << "\n";
 			}
 
-			if (state.eval >= 30000)
+			if (state.eval == VALUE_MATE)
 				endGame = state.side_to_move;
 			else if (seq.size() >= 170)
 				endGame = 0;
@@ -388,8 +385,11 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 		}
 
 		for (int i = 0; i < states.size(); i++) {
-			states[i].gameResult = endGame;
-			if (abs(states[i].eval) < 30000);
+			if (i > lastRand)
+				states[i].gameResult = endGame;
+			else
+				states[i].gameResult = -2;    //cant be trusted
+
 			writer->write(states[i]);
 		}
 

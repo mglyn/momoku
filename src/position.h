@@ -55,9 +55,9 @@ class Position {
 
 	Unit units[BOARD_SIZE];
 	using UnitsCache = std::array<Unit, 4 * 2 * Eval::HALF_LINE_LEN>;  //used for eval
-	UnitsCache* unitsCache;
+	UnitsCache* unitsCache = nullptr;
 
-	StateInfo* _st;
+	StateInfo* _st = nullptr;
 
 public:
 	Position() = default;
