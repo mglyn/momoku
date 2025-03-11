@@ -42,31 +42,31 @@ class Position {
 	int		_cntMove;
 	Piece	_side_to_move;
 
-	uint64_t codeLR[BOARD_LENGTH];				// L->R 低位->高位
-	uint64_t codeUD[BOARD_LENGTH];				// U->D 
-	uint64_t codeMain[2 * BOARD_LENGTH - 1];	// x = y
-	uint64_t codeVice[2 * BOARD_LENGTH - 1];	// x = -y 
+	uint64_t codeLR[BOARD_LENGTH] = {};				// L->R 低位->高位
+	uint64_t codeUD[BOARD_LENGTH] = {};				// U->D 
+	uint64_t codeMain[2 * BOARD_LENGTH - 1] = {};	// x = y
+	uint64_t codeVice[2 * BOARD_LENGTH - 1] = {};	// x = -y 
 	void or2Bits(PieceCode p, Square sq);
 	void xor2Bits(PieceCode p, Square sq);
 	void and2Bits(PieceCode p, Square sq);
 
-	Piece		content[BOARD_SIZE];
-	uint8_t		_cand[BOARD_SIZE];
+	Piece		content[BOARD_SIZE] = {};
+	uint8_t		_cand[BOARD_SIZE] = {};
 
-	Unit units[BOARD_SIZE];
+	Unit units[BOARD_SIZE] = {};
 	using UnitsCache = std::array<Unit, 4 * 2 * Eval::HALF_LINE_LEN>;  //used for eval
-	UnitsCache* unitsCache = nullptr;
+	UnitsCache* unitsCache;
 
-	StateInfo* _st = nullptr;
+	StateInfo* _st;
 
 public:
-	Position() = default;
+	Position(int gameSize = 15);
+	Position(const Position&);
+	Position& operator=(const Position&);
 	~Position() { 
 		delete[] unitsCache; 
 		delete[] _st;
 	};
-	Position(const Position&) = delete;
-	Position& operator=(const Position&) = delete;
 	constexpr const StateInfo& st()			const { return _st[_cntMove]; }
 	const StateInfo& prevst()				const { return _st[(std::max)(_cntMove - 1, 0)]; }
 	constexpr int gameSize()				const { return _gameSize; }
@@ -82,10 +82,6 @@ public:
 		int x = sq.x(), y = sq.y();
 		return x < 0 || y < 0 || x >= _gameSize || y >= _gameSize;
 	}
-	//set initial pos
-	std::vector<Square> seq()				const;
-	void set(int gameSize);
-	void set(const Position& cpos);
 	void make_move(Square sq);
 	void undo();
 

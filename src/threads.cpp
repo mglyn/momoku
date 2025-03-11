@@ -205,7 +205,7 @@ void ThreadPool::start_thinking(const Position& pos, LimitsType limits) {
             th->worker->nodes = th->worker->bestMoveChanges = 0;
             th->worker->rootDepth = th->worker->completedDepth = 0;
             th->worker->rootMoves.assign(rootMoves.begin(), rootMoves.end());
-            th->worker->rootPos.set(pos);
+            th->worker->rootPos = pos;
             });
     }
 

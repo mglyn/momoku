@@ -73,9 +73,9 @@ void Client::init_search_update_listeners() {
 
 		std::stringstream ss;
 
-		ss  << " multipv " << info.multiPV 
+		ss  << " multipv " << info.multiPV
 			<< " depth " << info.depth
-			<< " seldepth " << info.selDepth     
+			<< " seldepth " << info.selDepth
 			<< " score " << info.score
 			<< " nodes " << info.nodes
 			<< " nps " << info.nps
@@ -103,9 +103,8 @@ void Client::init_search_update_listeners() {
 		pipe.write(ss.str());
 		PrintTest();
 
-		for (int i = 0; i < rootMoves.size();i++) {
-			sync_cout << "pv" << i << ": " << rootMoves[i].pv[0].gomocupMove() << sync_endl;
-		}
+		//for (int i = 0; i < rootMoves.size();i++) 
+			//sync_cout << "pv" << i << ": " << rootMoves[i].pv[0].gomocupMove() << sync_endl;
 		});
 }
 

@@ -53,10 +53,7 @@ const Options& Engine::get_options() const {
 
 void Engine::go(int gameSize, std::vector<Square> seq) {
 
-	Position pos;
-
-	pos.set(gameSize);
-
+	Position pos(gameSize);
 	for (auto& sq : seq) {
 		pos.make_move(sq);
 	}
@@ -101,12 +98,7 @@ int Engine::get_hashfull(int maxAge) const { return tt.hashfull(maxAge); }
 
 void Engine::consoleDBG(int gameSize, std::vector<Square> seq) {
 
-	//first center move
-
-	Position pos;
-
-	pos.set(gameSize);
-
+	Position pos(gameSize);
 	for (auto& sq : seq) {
 		pos.make_move(sq);
 	}

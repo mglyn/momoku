@@ -29,8 +29,8 @@ void Writer::writeThreadLoop() {
 
 	while (!pipe_.done()) {
 		for (State state; pipe_.read(state);) {
-			if (count % 256 == 255) {
-				if (count % 2048 == 2047)
+			if (count % 256 == 0 && count != 0) {
+				if (count % 2048 == 0)
 					sync_cout << "writer writed 2048 states!!!!!!!!" << sync_endl;
 				else
 					sync_cout << "writer writed 256 states" << sync_endl;
@@ -297,7 +297,6 @@ std::vector<std::vector<std::pair<int, int>>> opennings = {
 	{{0, 0},	{0, -1},	{0, -2},	{-1, 1},	{-1, 2} },
 	{{4, 4},	{5, 3},		{6, 2},		{5, 1},		{6, 0}, },
 	{{-7, -5},	{-7, -6},	{-6, -5},	{-6, -6},	{-5, -4}},
-	//{{-8, -6},	{-7, -6},	{-8, -5},	{-6, -4},	{-6, -5}}
 };
 
 void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
@@ -321,9 +320,21 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 
 		//openning
 		const std::vector<std::pair<int, int>>& openning = opennings[prng.rand<size_t>() % opennings.size()];
+		int transCode = prng.rand<uint8_t>() % 8;
+
 		for (int i = 0; i < openning.size(); i++) {
 
-			Square sq = { 7 + openning[i].first, 7 + openning[i].second };
+			int x = openning[i].first, y = openning[i].second;
+			if (transCode == 0) std::swap(x, y), y = -y;		//rot 90
+			else if (transCode == 1) x = -x, y = -y;			//rot 180
+			else if (transCode == 2)std::swap(x, y), x = -x;	//rot 270
+			else if (transCode == 3);							// 单位元		 
+			else if (transCode == 4)x = -x;						//UDflip
+			else if (transCode == 5)y = -y;						//LRflip
+			else if (transCode == 6)std::swap(x, y);			//main flip
+			else if (transCode == 7)std::swap(x, y), y = -y, x = -x;	//vice flip
+
+			Square sq = { 7 + x, 7 + y };
 			seq.push_back(sq);
 			state.board[sq.x()][sq.y()] = state.side_to_move;
 			state.side_to_move = -state.side_to_move;
@@ -337,7 +348,7 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 		for (int calcCnt = 0; endGame == -2; calcCnt++) {
 
 			int moveCnt = calcCnt + openning.size();
-			const int multiTb[225] = { 4,4,4,4,4,2,2,2,2,2 };
+			const int multiTb[225] = { 4,4,4,4,4,3,3,3,2,2 };
 			const int multiPV = std::clamp(multiTb[calcCnt], 1, 4);
 			const int nodesperpv = 2000000;
 			engine.set_options("multipv", multiPV);
@@ -364,7 +375,7 @@ void selfPlayThreadFunc(Writer* writer, int threadID, Pipe<std::string>* pipe) {
 				moves[0].score - moves[b % multiPV].score < 40) {
 				choosed = moves[b % multiPV].pv[0];
 				lastRand = moveCnt;
-				std::cout << "thread " << threadID << " rand" << "\n";
+				//std::cout << "thread " << threadID << " rand" << "\n";
 			}
 
 			if (state.eval == VALUE_MATE)

@@ -8,6 +8,5 @@
 int main() {
 	//Piskvork::pisqpipe();
 	//std::unique_ptr<Client> c(new Client);c->Loop();
-
 	miniGUI m; m.selfPlayParallel();
 }

@@ -43,17 +43,14 @@ void Position::and2Bits(PieceCode k, Square sq) {
 }
 
 //set empty board
-void Position::set(int gameSize) {
+Position::Position(int gameSize) {
 	_gameSize = gameSize;
 
 	_cntMove = 0;
 	_side_to_move = P1;
 
-	delete[] unitsCache;
-	unitsCache = new UnitsCache[_gameSize * _gameSize + 1] {};
-
-	delete[] _st;
-	_st = new StateInfo[_gameSize * _gameSize + 1] {};
+	unitsCache = new UnitsCache[_gameSize * _gameSize + 1]{};
+	_st = new StateInfo[_gameSize * _gameSize + 1]{};
 
 	StateInfo& st = _st[_cntMove];
 
@@ -67,8 +64,6 @@ void Position::set(int gameSize) {
 			content[sq] = Empty;
 			and2Bits(C_Empty, sq);
 		}
-
-		_cand[sq] = 0;
 	}
 	for (Square sq{ 0 }; sq < BOARD_SIZE; ++sq) {
 
@@ -87,37 +82,46 @@ void Position::set(int gameSize) {
 			Unit& v = units[sq];
 
 			for (int i = 0; i < 4; i++) {
-				v.line[i] = Eval::decodeLine(code[i] >> 8);			
+				v.line[i] = Eval::decodeLine(code[i] >> 8);
 			}
 			v.updateCombPattern();
-			
+
 			st.valueP1 += v.cp[P1].value;
 			st.cntT[v.cp[P1].type][P1]++;
 			st.valueP1 -= v.cp[P2].value;
 			st.cntT[v.cp[P2].type][P2]++;
-	}
+		}
 	}
 }
 
-//copy 
-void Position::set(const Position& cpos) {
+Position::Position(const Position& cpos) {
+	
+	auto oldCache = unitsCache;
+	auto oldSt = _st;
 
 	std::memcpy(this, &cpos, sizeof(Position));
 
-	_st = new StateInfo[_gameSize * _gameSize + 1];
-	std::memcpy(_st, cpos._st, (_gameSize * _gameSize + 1) * sizeof(StateInfo));
-
-	unitsCache = new UnitsCache[_gameSize * _gameSize + 1];
+	unitsCache = oldCache;
 	std::memcpy(unitsCache, cpos.unitsCache, (_gameSize * _gameSize + 1) * sizeof(UnitsCache));
+	_st = oldSt;
+	std::memcpy(_st, cpos._st, (_gameSize * _gameSize + 1) * sizeof(StateInfo));
 }
 
-std::vector<Square> Position::seq() const {
-	std::vector<Square> ret;
+Position& Position::operator=(const Position& cpos) {
+	
+	if (this != &cpos) {
+		auto oldCache = unitsCache;
+		auto oldSt = _st;
 
-	for (int i = 1; i < _cntMove; i++) {
-		ret.push_back(_st[_cntMove].move);
+		std::memcpy(this, &cpos, sizeof(Position));
+
+		unitsCache = oldCache;
+		std::memcpy(unitsCache, cpos.unitsCache, (_gameSize * _gameSize + 1) * sizeof(UnitsCache));
+		_st = oldSt;
+		std::memcpy(_st, cpos._st, (_gameSize * _gameSize + 1) * sizeof(StateInfo));
 	}
-	return ret;
+
+	return *this;
 }
 
 constexpr static int imax(int a, int b) {

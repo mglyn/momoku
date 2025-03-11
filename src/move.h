@@ -44,5 +44,4 @@ public:
 };
 
 std::vector<Square> genRootMove(const Position& pos);
-
 #endif
